@@ -2,6 +2,7 @@ package com.piecer.app.ui.screens.security
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,7 +47,8 @@ fun LockScreen(
     errorMessage: String?,
     onSubmitPin: (String) -> Unit,
     onBiometricClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    canAutoTriggerBiometric: Boolean = true
 ) {
     val spacing = PiecerTheme.spacing
     val colors = PiecerTheme.colors
@@ -67,14 +69,20 @@ fun LockScreen(
         nowMillis = System.currentTimeMillis()
     }
 
-    LaunchedEffect(biometricEnabled, isLockedOut) {
-        if (biometricEnabled && !isLockedOut) {
+    LaunchedEffect(biometricEnabled, isLockedOut, canAutoTriggerBiometric) {
+        if (canAutoTriggerBiometric && biometricEnabled && !isLockedOut) {
             onBiometricClick()
         }
     }
 
     Surface(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = {}
+            ),
         color = colorScheme.background
     ) {
         Column(

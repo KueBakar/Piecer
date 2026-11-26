@@ -77,7 +77,8 @@ import java.util.Locale
 fun SettingsScreen(
     viewModel: SettingsViewModel,
     onBack: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onPinConfigured: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val settings = uiState.settings
@@ -177,7 +178,7 @@ fun SettingsScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                            contentDescription = stringResource(id = R.string.showcase_back)
+                            contentDescription = stringResource(id = R.string.action_back)
                         )
                     }
                 },
@@ -492,6 +493,7 @@ fun SettingsScreen(
             onDismiss = { showPinDialog = false },
             onSave = { pin ->
                 viewModel.savePin(pin)
+                onPinConfigured()
                 showPinDialog = false
             }
         )

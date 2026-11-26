@@ -17,32 +17,7 @@
     <string name="amount_hidden">Rp••••••</string>
     <string name="action_show_amount">Tampilkan saldo</string>
     <string name="action_hide_amount">Sembunyikan saldo</string>
-
-    <!-- Debug Showcase -->
-    <string name="showcase_button">UI Showcase</string>
-    <string name="showcase_title">Component Showcase</string>
-    <string name="showcase_back">Kembali</string>
-    <string name="showcase_light_mode">Mode Terang</string>
-    <string name="showcase_dark_mode">Mode Gelap</string>
-    <string name="showcase_cards">PiecerCard</string>
-    <string name="showcase_card_light_title">Kartu Terang</string>
-    <string name="showcase_card_light_desc">Permukaan putih dengan garis tepi halus</string>
-    <string name="showcase_card_dark_title">Kartu Gelap</string>
-    <string name="showcase_card_dark_desc">Permukaan gelap kontras tinggi</string>
-    <string name="showcase_buttons">PiecerButton</string>
-    <string name="showcase_btn_primary">Tombol Utama</string>
-    <string name="showcase_btn_secondary">Tombol Sekunder</string>
-    <string name="showcase_chips">PiecerChip</string>
-    <string name="showcase_chip_active">Aktif</string>
-    <string name="showcase_chip_inactive">Nonaktif</string>
-    <string name="showcase_amounts">AmountText</string>
-    <string name="showcase_progress">ProgressBarPiece</string>
-    <string name="showcase_progress_mint">Aman (45%)</string>
-    <string name="showcase_progress_amber">Waspada (80%)</string>
-    <string name="showcase_progress_coral">Melebihi (100%)</string>
-    <string name="showcase_empty">EmptyState</string>
-    <string name="showcase_empty_title">Belum ada transaksi</string>
-    <string name="showcase_empty_desc">Catatan keuanganmu akan muncul di sini.</string>
+    <string name="action_back">Kembali</string>
 
     <!-- Tambah / Edit Transaksi -->
     <string name="tx_add_title">Tambah Transaksi</string>

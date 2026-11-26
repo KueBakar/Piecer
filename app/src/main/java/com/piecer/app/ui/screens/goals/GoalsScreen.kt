@@ -119,7 +119,7 @@ fun GoalsScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                            contentDescription = stringResource(id = R.string.showcase_back)
+                            contentDescription = stringResource(id = R.string.action_back)
                         )
                     }
                 },

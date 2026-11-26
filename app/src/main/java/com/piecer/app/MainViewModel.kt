@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.piecer.app.data.preferences.AppSettings
 import com.piecer.app.data.preferences.SettingsRepository
+import com.piecer.app.util.AppLockPolicy
 import com.piecer.app.util.PinHasher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,6 +28,12 @@ class MainViewModel @Inject constructor(
         initialValue = AppSettings()
     )
 
+    private val _isAppReady = MutableStateFlow(false)
+    val isAppReady: StateFlow<Boolean> = _isAppReady.asStateFlow()
+
+    private val _showSplash = MutableStateFlow(true)
+    val showSplash: StateFlow<Boolean> = _showSplash.asStateFlow()
+
     private val _isLocked = MutableStateFlow(false)
     val isLocked: StateFlow<Boolean> = _isLocked.asStateFlow()
 
@@ -35,6 +42,7 @@ class MainViewModel @Inject constructor(
 
     private var hasInitializedLock = false
     private var lastBackgroundElapsedMs = 0L
+    private var isBiometricPromptShowing = false
 
     init {
         viewModelScope.launch {
@@ -45,23 +53,49 @@ class MainViewModel @Inject constructor(
                     _isLocked.value = true
                 }
             }
+            _isAppReady.value = true
         }
+    }
+
+    fun onSplashFinished() {
+        _showSplash.value = false
+    }
+
+    fun setBiometricPromptShowing(showing: Boolean) {
+        isBiometricPromptShowing = showing
+        if (showing) {
+            lastBackgroundElapsedMs = 0L
+        }
+    }
+
+    fun markSessionUnlocked() {
+        hasInitializedLock = true
+        lastBackgroundElapsedMs = 0L
+        _pinError.value = null
+        _isLocked.value = false
     }
 
     fun onAppStart() {
         val backgroundedAt = lastBackgroundElapsedMs
-        if (backgroundedAt > 0L) {
-            lastBackgroundElapsedMs = 0L
-            val elapsed = SystemClock.elapsedRealtime() - backgroundedAt
-            if (elapsed > BACKGROUND_LOCK_THRESHOLD_MS && settings.value.isPinEnabled) {
-                _isLocked.value = true
-                _pinError.value = null
-            }
+        lastBackgroundElapsedMs = 0L
+        if (AppLockPolicy.shouldLockOnForeground(
+                isPinEnabled = settings.value.isPinEnabled,
+                backgroundedAtElapsedMs = backgroundedAt,
+                nowElapsedMs = SystemClock.elapsedRealtime(),
+                isBiometricPromptShowing = isBiometricPromptShowing
+            )
+        ) {
+            _isLocked.value = true
+            _pinError.value = null
         }
     }
 
     fun onAppStop(isChangingConfigurations: Boolean) {
-        if (!isChangingConfigurations) {
+        if (AppLockPolicy.shouldRecordBackgroundTimestamp(
+                isChangingConfigurations = isChangingConfigurations,
+                isBiometricPromptShowing = isBiometricPromptShowing
+            )
+        ) {
             lastBackgroundElapsedMs = SystemClock.elapsedRealtime()
         }
     }
@@ -102,6 +136,8 @@ class MainViewModel @Inject constructor(
     }
 
     fun onBiometricSuccess() {
+        isBiometricPromptShowing = false
+        lastBackgroundElapsedMs = 0L
         viewModelScope.launch {
             settingsRepository.updatePinAttempts(0, 0L)
         }
@@ -113,9 +149,5 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             settingsRepository.setOnboardingCompleted(true)
         }
-    }
-
-    companion object {
-        private const val BACKGROUND_LOCK_THRESHOLD_MS = 30_000L
     }
 }

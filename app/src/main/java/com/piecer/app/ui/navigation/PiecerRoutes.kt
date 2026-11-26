@@ -46,7 +46,6 @@ enum class PiecerTab(
 }
 
 object PiecerRoutes {
-    const val SHOWCASE = "component_showcase"
     const val ADD_TRANSACTION = "add_transaction"
     const val WALLETS = "wallets"
     const val BUDGETS = "budgets"

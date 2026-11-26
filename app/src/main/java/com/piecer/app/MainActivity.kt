@@ -1,13 +1,16 @@
 package com.piecer.app
 
-import android.content.pm.ApplicationInfo
+import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -23,7 +26,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
@@ -35,11 +37,10 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.piecer.app.data.local.entity.TransactionType
 import com.piecer.app.data.preferences.ThemeMode
-import com.piecer.app.ui.components.PiecerChip
+import com.piecer.app.ui.components.SplashAnimation
 import com.piecer.app.ui.navigation.PiecerBottomBar
 import com.piecer.app.ui.navigation.PiecerRoutes
 import com.piecer.app.ui.navigation.PiecerTab
-import com.piecer.app.ui.screens.ComponentShowcaseScreen
 import com.piecer.app.ui.screens.addtransaction.AddTransactionScreen
 import com.piecer.app.ui.screens.addtransaction.AddTransactionViewModel
 import com.piecer.app.ui.screens.budgets.BudgetsScreen
@@ -77,12 +78,19 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            splashScreen.setOnExitAnimationListener { splashView -> splashView.remove() }
+        }
         enableEdgeToEdge()
         setContent {
+            val isAppReady by mainViewModel.isAppReady.collectAsStateWithLifecycle()
+            val showSplash by mainViewModel.showSplash.collectAsStateWithLifecycle()
             val settings by mainViewModel.settings.collectAsStateWithLifecycle()
             val isLocked by mainViewModel.isLocked.collectAsStateWithLifecycle()
             val pinError by mainViewModel.pinError.collectAsStateWithLifecycle()
             val wrongPinMessage = stringResource(id = R.string.lock_wrong_pin)
+
+            if (!isAppReady) return@setContent
 
             val darkTheme = when (settings.themeMode) {
                 ThemeMode.LIGHT -> false
@@ -91,31 +99,24 @@ class MainActivity : FragmentActivity() {
             }
 
             LaunchedEffect(settings.blockScreenshots) {
-                if (settings.blockScreenshots) {
+                val hasSecure = (window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE) != 0
+                if (settings.blockScreenshots && !hasSecure) {
                     window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-                } else {
+                } else if (!settings.blockScreenshots && hasSecure) {
                     window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
                 }
             }
+
+            val canUseBiometric = remember(this) { canAuthenticateBiometric() }
 
             PiecerTheme(
                 darkTheme = darkTheme,
                 reduceMotion = settings.reduceMotion
             ) {
-                when {
-                    !settings.onboardingCompleted -> {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    if (!settings.onboardingCompleted) {
                         OnboardingScreen(onFinish = mainViewModel::completeOnboarding)
-                    }
-                    isLocked && settings.isPinEnabled -> {
-                        LockScreen(
-                            biometricEnabled = settings.biometricEnabled,
-                            lockoutUntilMillis = settings.pinLockoutUntilMillis,
-                            errorMessage = pinError,
-                            onSubmitPin = { pin -> mainViewModel.submitPin(pin, wrongPinMessage) },
-                            onBiometricClick = { launchBiometricPrompt() }
-                        )
-                    }
-                    else -> {
+                    } else {
                         PiecerApp(
                             homeViewModel = homeViewModel,
                             transactionsViewModel = transactionsViewModel,
@@ -124,7 +125,26 @@ class MainActivity : FragmentActivity() {
                             walletsViewModel = walletsViewModel,
                             budgetsViewModel = budgetsViewModel,
                             goalsViewModel = goalsViewModel,
-                            settingsViewModel = settingsViewModel
+                            settingsViewModel = settingsViewModel,
+                            onPinConfigured = mainViewModel::markSessionUnlocked
+                        )
+
+                        if (isLocked && settings.isPinEnabled) {
+                            LockScreen(
+                                biometricEnabled = settings.biometricEnabled && canUseBiometric,
+                                lockoutUntilMillis = settings.pinLockoutUntilMillis,
+                                errorMessage = pinError,
+                                canAutoTriggerBiometric = !showSplash,
+                                onSubmitPin = { pin -> mainViewModel.submitPin(pin, wrongPinMessage) },
+                                onBiometricClick = { launchBiometricPrompt() }
+                            )
+                        }
+                    }
+
+                    if (showSplash) {
+                        SplashAnimation(
+                            reduceMotion = settings.reduceMotion,
+                            onFinished = mainViewModel::onSplashFinished
                         )
                     }
                 }
@@ -142,24 +162,50 @@ class MainActivity : FragmentActivity() {
         mainViewModel.onAppStop(isChangingConfigurations)
     }
 
+    private fun canAuthenticateBiometric(): Boolean {
+        return try {
+            val manager = BiometricManager.from(this)
+            manager.canAuthenticate(
+                BiometricManager.Authenticators.BIOMETRIC_STRONG or
+                    BiometricManager.Authenticators.BIOMETRIC_WEAK
+            ) == BiometricManager.BIOMETRIC_SUCCESS
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     private fun launchBiometricPrompt() {
-        val executor = ContextCompat.getMainExecutor(this)
-        val prompt = BiometricPrompt(
-            this,
-            executor,
-            object : BiometricPrompt.AuthenticationCallback() {
-                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                    super.onAuthenticationSucceeded(result)
-                    mainViewModel.onBiometricSuccess()
+        if (!canAuthenticateBiometric()) {
+            mainViewModel.setBiometricPromptShowing(false)
+            return
+        }
+        try {
+            mainViewModel.setBiometricPromptShowing(true)
+            val executor = ContextCompat.getMainExecutor(this)
+            val prompt = BiometricPrompt(
+                this,
+                executor,
+                object : BiometricPrompt.AuthenticationCallback() {
+                    override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                        super.onAuthenticationSucceeded(result)
+                        mainViewModel.onBiometricSuccess()
+                    }
+
+                    override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                        super.onAuthenticationError(errorCode, errString)
+                        mainViewModel.setBiometricPromptShowing(false)
+                    }
                 }
-            }
-        )
-        val promptInfo = BiometricPrompt.PromptInfo.Builder()
-            .setTitle(getString(R.string.lock_biometric_prompt_title))
-            .setSubtitle(getString(R.string.lock_biometric_prompt_subtitle))
-            .setNegativeButtonText(getString(R.string.lock_biometric_use_pin))
-            .build()
-        prompt.authenticate(promptInfo)
+            )
+            val promptInfo = BiometricPrompt.PromptInfo.Builder()
+                .setTitle(getString(R.string.lock_biometric_prompt_title))
+                .setSubtitle(getString(R.string.lock_biometric_prompt_subtitle))
+                .setNegativeButtonText(getString(R.string.lock_biometric_use_pin))
+                .build()
+            prompt.authenticate(promptInfo)
+        } catch (_: Exception) {
+            mainViewModel.setBiometricPromptShowing(false)
+        }
     }
 }
 
@@ -173,22 +219,17 @@ fun PiecerApp(
     walletsViewModel: WalletsViewModel,
     budgetsViewModel: BudgetsViewModel,
     goalsViewModel: GoalsViewModel,
-    settingsViewModel: SettingsViewModel
+    settingsViewModel: SettingsViewModel,
+    onPinConfigured: () -> Unit
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
-    val isFullScreen = currentRoute == PiecerRoutes.SHOWCASE ||
-        currentRoute == PiecerRoutes.ADD_TRANSACTION ||
+    val isFullScreen = currentRoute == PiecerRoutes.ADD_TRANSACTION ||
         currentRoute == PiecerRoutes.WALLETS ||
         currentRoute == PiecerRoutes.BUDGETS ||
         currentRoute == PiecerRoutes.GOALS ||
         currentRoute == PiecerRoutes.SETTINGS
-
-    val context = LocalContext.current
-    val isDebuggable = remember(context) {
-        (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
-    }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -233,16 +274,6 @@ fun PiecerApp(
                             text = stringResource(id = R.string.app_name),
                             style = MaterialTheme.typography.titleLarge
                         )
-                    },
-                    actions = {
-                        if (isDebuggable) {
-                            PiecerChip(
-                                label = stringResource(id = R.string.showcase_button),
-                                selected = false,
-                                onClick = { navController.navigate(PiecerRoutes.SHOWCASE) },
-                                modifier = Modifier.padding(end = PiecerTheme.spacing.sm)
-                            )
-                        }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.background,
@@ -348,7 +379,8 @@ fun PiecerApp(
             composable(PiecerRoutes.SETTINGS) {
                 SettingsScreen(
                     viewModel = settingsViewModel,
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
+                    onPinConfigured = onPinConfigured
                 )
             }
             composable(PiecerRoutes.ADD_TRANSACTION) {
@@ -362,13 +394,6 @@ fun PiecerApp(
                         }
                     }
                 )
-            }
-            if (isDebuggable) {
-                composable(PiecerRoutes.SHOWCASE) {
-                    ComponentShowcaseScreen(
-                        onBack = { navController.popBackStack() }
-                    )
-                }
             }
         }
     }
