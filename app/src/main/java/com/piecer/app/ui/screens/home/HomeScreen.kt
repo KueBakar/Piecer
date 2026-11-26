@@ -37,8 +37,11 @@ import com.piecer.app.ui.components.EmptyState
 import com.piecer.app.ui.components.PiecerCard
 import com.piecer.app.ui.components.PiecerCardVariant
 import com.piecer.app.ui.components.PiecerIconButton
+import com.piecer.app.ui.components.ProgressBarPiece
 import com.piecer.app.ui.components.TransactionRowItem
+import com.piecer.app.ui.components.formatRupiah
 import com.piecer.app.ui.theme.PiecerTheme
+import com.piecer.app.util.BudgetStatus
 import com.piecer.app.util.DailyExpensePoint
 
 @Composable
@@ -46,6 +49,7 @@ fun HomeScreen(
     viewModel: HomeViewModel,
     onSeeAllTransactions: () -> Unit,
     onEditTransaction: (Long) -> Unit,
+    onOpenBudgets: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -169,6 +173,54 @@ fun HomeScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.mutedText
                 )
+            }
+        }
+
+        uiState.criticalBudget?.let { critical ->
+            item {
+                val badgeColor = when (critical.progress.status) {
+                    BudgetStatus.SAFE -> colors.mint
+                    BudgetStatus.WARNING -> colors.amber
+                    BudgetStatus.EXCEEDED -> colors.coral
+                }
+                PiecerCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    variant = PiecerCardVariant.Light,
+                    onClick = onOpenBudgets
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.home_budget_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = colors.onCardLight
+                        )
+                        Text(
+                            text = stringResource(
+                                id = R.string.budgets_percent_label,
+                                critical.progress.percentageInt
+                            ),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = badgeColor
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(spacing.xs))
+                    Text(
+                        text = stringResource(
+                            id = R.string.home_budget_sub,
+                            critical.categoryName,
+                            formatRupiah(critical.progress.spent),
+                            formatRupiah(critical.progress.limit)
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.mutedText
+                    )
+                    Spacer(modifier = Modifier.height(spacing.sm))
+                    ProgressBarPiece(progress = critical.progress.progressRatio)
+                }
             }
         }
 

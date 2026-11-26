@@ -27,18 +27,25 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.piecer.app.data.local.entity.TransactionType
 import com.piecer.app.ui.components.PiecerChip
 import com.piecer.app.ui.navigation.PiecerBottomBar
 import com.piecer.app.ui.navigation.PiecerRoutes
 import com.piecer.app.ui.navigation.PiecerTab
 import com.piecer.app.ui.screens.ComponentShowcaseScreen
-import com.piecer.app.ui.screens.PlaceholderTabScreen
 import com.piecer.app.ui.screens.addtransaction.AddTransactionScreen
 import com.piecer.app.ui.screens.addtransaction.AddTransactionViewModel
+import com.piecer.app.ui.screens.budgets.BudgetsScreen
+import com.piecer.app.ui.screens.budgets.BudgetsViewModel
 import com.piecer.app.ui.screens.home.HomeScreen
 import com.piecer.app.ui.screens.home.HomeViewModel
+import com.piecer.app.ui.screens.more.MoreScreen
+import com.piecer.app.ui.screens.statistics.StatisticsScreen
+import com.piecer.app.ui.screens.statistics.StatisticsViewModel
 import com.piecer.app.ui.screens.transactions.TransactionsScreen
 import com.piecer.app.ui.screens.transactions.TransactionsViewModel
+import com.piecer.app.ui.screens.wallets.WalletsScreen
+import com.piecer.app.ui.screens.wallets.WalletsViewModel
 import com.piecer.app.ui.theme.PiecerTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -48,6 +55,9 @@ class MainActivity : ComponentActivity() {
     private val homeViewModel: HomeViewModel by viewModels()
     private val transactionsViewModel: TransactionsViewModel by viewModels()
     private val addTransactionViewModel: AddTransactionViewModel by viewModels()
+    private val statisticsViewModel: StatisticsViewModel by viewModels()
+    private val walletsViewModel: WalletsViewModel by viewModels()
+    private val budgetsViewModel: BudgetsViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,7 +67,10 @@ class MainActivity : ComponentActivity() {
                 PiecerApp(
                     homeViewModel = homeViewModel,
                     transactionsViewModel = transactionsViewModel,
-                    addTransactionViewModel = addTransactionViewModel
+                    addTransactionViewModel = addTransactionViewModel,
+                    statisticsViewModel = statisticsViewModel,
+                    walletsViewModel = walletsViewModel,
+                    budgetsViewModel = budgetsViewModel
                 )
             }
         }
@@ -69,13 +82,18 @@ class MainActivity : ComponentActivity() {
 fun PiecerApp(
     homeViewModel: HomeViewModel,
     transactionsViewModel: TransactionsViewModel,
-    addTransactionViewModel: AddTransactionViewModel
+    addTransactionViewModel: AddTransactionViewModel,
+    statisticsViewModel: StatisticsViewModel,
+    walletsViewModel: WalletsViewModel,
+    budgetsViewModel: BudgetsViewModel
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val isFullScreen = currentRoute == PiecerRoutes.SHOWCASE ||
-        currentRoute == PiecerRoutes.ADD_TRANSACTION
+        currentRoute == PiecerRoutes.ADD_TRANSACTION ||
+        currentRoute == PiecerRoutes.WALLETS ||
+        currentRoute == PiecerRoutes.BUDGETS
 
     val context = LocalContext.current
     val isDebuggable = remember(context) {
@@ -86,6 +104,10 @@ fun PiecerApp(
     val scope = rememberCoroutineScope()
     val savedMessage = stringResource(id = R.string.tx_saved_snackbar)
     val deletedMessage = stringResource(id = R.string.tx_deleted_snackbar)
+    val walletSavedMessage = stringResource(id = R.string.wallets_saved_snackbar)
+    val walletDeletedMessage = stringResource(id = R.string.wallets_deleted_snackbar)
+    val budgetSavedMessage = stringResource(id = R.string.budgets_saved_snackbar)
+    val budgetDeletedMessage = stringResource(id = R.string.budgets_deleted_snackbar)
 
     val navigateToTab: (PiecerTab) -> Unit = { tab ->
         navController.navigate(tab.route) {
@@ -155,7 +177,8 @@ fun PiecerApp(
                 HomeScreen(
                     viewModel = homeViewModel,
                     onSeeAllTransactions = { navigateToTab(PiecerTab.Transactions) },
-                    onEditTransaction = openEditTransaction
+                    onEditTransaction = openEditTransaction,
+                    onOpenBudgets = { navController.navigate(PiecerRoutes.BUDGETS) }
                 )
             }
             composable(PiecerTab.Transactions.route) {
@@ -170,10 +193,47 @@ fun PiecerApp(
                 )
             }
             composable(PiecerTab.Statistics.route) {
-                PlaceholderTabScreen(tab = PiecerTab.Statistics)
+                StatisticsScreen(
+                    viewModel = statisticsViewModel,
+                    onCategoryClick = { categoryId, categoryName ->
+                        transactionsViewModel.filterByCategory(categoryId, categoryName)
+                        navigateToTab(PiecerTab.Transactions)
+                    }
+                )
             }
             composable(PiecerTab.More.route) {
-                PlaceholderTabScreen(tab = PiecerTab.More)
+                MoreScreen(
+                    onOpenWallets = { navController.navigate(PiecerRoutes.WALLETS) },
+                    onOpenBudgets = { navController.navigate(PiecerRoutes.BUDGETS) }
+                )
+            }
+            composable(PiecerRoutes.WALLETS) {
+                WalletsScreen(
+                    viewModel = walletsViewModel,
+                    onBack = { navController.popBackStack() },
+                    onTransferClick = {
+                        addTransactionViewModel.startNew(TransactionType.TRANSFER)
+                        navController.navigate(PiecerRoutes.ADD_TRANSACTION)
+                    },
+                    onWalletSaved = {
+                        scope.launch { snackbarHostState.showSnackbar(walletSavedMessage) }
+                    },
+                    onWalletDeleted = {
+                        scope.launch { snackbarHostState.showSnackbar(walletDeletedMessage) }
+                    }
+                )
+            }
+            composable(PiecerRoutes.BUDGETS) {
+                BudgetsScreen(
+                    viewModel = budgetsViewModel,
+                    onBack = { navController.popBackStack() },
+                    onBudgetSaved = {
+                        scope.launch { snackbarHostState.showSnackbar(budgetSavedMessage) }
+                    },
+                    onBudgetDeleted = {
+                        scope.launch { snackbarHostState.showSnackbar(budgetDeletedMessage) }
+                    }
+                )
             }
             composable(PiecerRoutes.ADD_TRANSACTION) {
                 AddTransactionScreen(

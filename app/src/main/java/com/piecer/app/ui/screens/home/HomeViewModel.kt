@@ -4,10 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.piecer.app.data.local.entity.TransactionEntity
 import com.piecer.app.data.local.entity.TransactionType
+import com.piecer.app.data.repository.BudgetRepository
 import com.piecer.app.data.repository.CategoryRepository
 import com.piecer.app.data.repository.TransactionRepository
 import com.piecer.app.data.repository.WalletRepository
 import com.piecer.app.ui.components.TransactionDisplayItem
+import com.piecer.app.util.BudgetCalculator
+import com.piecer.app.util.BudgetProgress
 import com.piecer.app.util.DailyExpensePoint
 import com.piecer.app.util.DateUtils
 import com.piecer.app.util.calculateBolehJajanHariIni
@@ -29,6 +32,11 @@ enum class GreetingPeriod {
     NIGHT
 }
 
+data class HomeCriticalBudget(
+    val categoryName: String,
+    val progress: BudgetProgress
+)
+
 data class HomeUiState(
     val greetingPeriod: GreetingPeriod = GreetingPeriod.MORNING,
     val isBalanceHidden: Boolean = false,
@@ -37,6 +45,7 @@ data class HomeUiState(
     val monthlyExpense: Long = 0L,
     val dailyAllowance: Long = 0L,
     val remainingDaysInMonth: Int = 1,
+    val criticalBudget: HomeCriticalBudget? = null,
     val weeklyExpenses: List<DailyExpensePoint> = emptyList(),
     val recentTransactions: List<TransactionDisplayItem> = emptyList(),
     val hasAnyTransaction: Boolean = false
@@ -46,7 +55,8 @@ data class HomeUiState(
 class HomeViewModel @Inject constructor(
     walletRepository: WalletRepository,
     transactionRepository: TransactionRepository,
-    categoryRepository: CategoryRepository
+    categoryRepository: CategoryRepository,
+    budgetRepository: BudgetRepository
 ) : ViewModel() {
 
     private val isBalanceHidden = MutableStateFlow(false)
@@ -55,13 +65,13 @@ class HomeViewModel @Inject constructor(
     private val monthStart = DateUtils.startOfMonthMillis(nowMillis)
     private val monthEnd = DateUtils.endOfMonthMillis(nowMillis)
 
-    val uiState: StateFlow<HomeUiState> = combine(
+    private val baseDataFlow = combine(
         walletRepository.observeWalletsWithBalance(),
         transactionRepository.observePeriodSummary(monthStart, monthEnd),
         transactionRepository.observeAll(),
         categoryRepository.observeAll(),
-        isBalanceHidden
-    ) { walletsWithBalance, monthlySummary, allTransactions, categories, hidden ->
+        budgetRepository.observeAll()
+    ) { walletsWithBalance, monthlySummary, allTransactions, categories, budgets ->
         val currentNow = System.currentTimeMillis()
         val totalBalance = walletsWithBalance.sumOf { it.currentBalance }
         val remainingDays = DateUtils.remainingDaysInMonth(currentNow)
@@ -77,6 +87,28 @@ class HomeViewModel @Inject constructor(
         val categoryNames = categories.associate { it.id to it.name }
         val walletNames = walletsWithBalance.associate { it.walletId to it.name }
 
+        val currentMonthStart = DateUtils.startOfMonthMillis(currentNow)
+        val currentMonthEnd = DateUtils.endOfMonthMillis(currentNow)
+        val spentByCategory = allTransactions
+            .asSequence()
+            .filter {
+                it.type == TransactionType.EXPENSE &&
+                    it.categoryId != null &&
+                    it.date in currentMonthStart..currentMonthEnd
+            }
+            .groupBy { it.categoryId!! }
+            .mapValues { (_, txs) -> txs.sumOf { it.amount } }
+
+        val budgetSummaries = budgets.mapNotNull { budget ->
+            val catName = categoryNames[budget.categoryId] ?: return@mapNotNull null
+            val spent = spentByCategory[budget.categoryId] ?: 0L
+            HomeCriticalBudget(
+                categoryName = catName,
+                progress = BudgetCalculator.calculate(spent = spent, limit = budget.limitAmount)
+            )
+        }
+        val criticalBudget = BudgetCalculator.findMostCritical(budgetSummaries) { it.progress }
+
         val recentItems = allTransactions.take(5).map { tx ->
             toDisplayItem(tx, categoryNames, walletNames)
         }
@@ -85,16 +117,24 @@ class HomeViewModel @Inject constructor(
 
         HomeUiState(
             greetingPeriod = resolveGreetingPeriod(currentNow),
-            isBalanceHidden = hidden,
+            isBalanceHidden = false,
             totalBalance = totalBalance,
             monthlyIncome = monthlySummary.totalIncome,
             monthlyExpense = monthlySummary.totalExpense,
             dailyAllowance = dailyAllowance,
             remainingDaysInMonth = remainingDays,
+            criticalBudget = criticalBudget,
             weeklyExpenses = weeklyExpenses,
             recentTransactions = recentItems,
             hasAnyTransaction = allTransactions.isNotEmpty()
         )
+    }
+
+    val uiState: StateFlow<HomeUiState> = combine(
+        baseDataFlow,
+        isBalanceHidden
+    ) { state, hidden ->
+        state.copy(isBalanceHidden = hidden)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000L),

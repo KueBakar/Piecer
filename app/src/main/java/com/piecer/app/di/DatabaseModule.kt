@@ -3,6 +3,7 @@ package com.piecer.app.di
 import android.content.Context
 import androidx.room.Room
 import com.piecer.app.data.local.PiecerDatabase
+import com.piecer.app.data.local.dao.BudgetDao
 import com.piecer.app.data.local.dao.CategoryDao
 import com.piecer.app.data.local.dao.TransactionDao
 import com.piecer.app.data.local.dao.WalletDao
@@ -27,6 +28,7 @@ object DatabaseModule {
             PiecerDatabase::class.java,
             PiecerDatabase.DATABASE_NAME
         )
+            .addMigrations(PiecerDatabase.MIGRATION_1_2)
             .addCallback(PiecerDatabase.createSeedCallback())
             .build()
     }
@@ -39,4 +41,7 @@ object DatabaseModule {
 
     @Provides
     fun provideTransactionDao(database: PiecerDatabase): TransactionDao = database.transactionDao()
+
+    @Provides
+    fun provideBudgetDao(database: PiecerDatabase): BudgetDao = database.budgetDao()
 }

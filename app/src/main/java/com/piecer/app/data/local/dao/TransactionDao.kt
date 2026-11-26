@@ -96,4 +96,7 @@ interface TransactionDao {
 
     @Query("DELETE FROM transactions WHERE id = :id")
     suspend fun deleteById(id: Long)
+
+    @Query("DELETE FROM transactions WHERE walletId = :walletId OR toWalletId = :walletId")
+    suspend fun deleteByWalletId(walletId: Long)
 }

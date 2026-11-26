@@ -35,6 +35,8 @@ data class TransactionDayGroup(
 data class TransactionsUiState(
     val searchQuery: String = "",
     val selectedFilter: TransactionFilter = TransactionFilter.ALL,
+    val selectedCategoryId: Long? = null,
+    val selectedCategoryName: String? = null,
     val groups: List<TransactionDayGroup> = emptyList(),
     val hasAnyTransaction: Boolean = false
 )
@@ -48,14 +50,22 @@ class TransactionsViewModel @Inject constructor(
 
     private val searchQuery = MutableStateFlow("")
     private val selectedFilter = MutableStateFlow(TransactionFilter.ALL)
+    private val selectedCategory = MutableStateFlow<Pair<Long, String>?>(null)
+
+    private val filterInputsFlow = combine(
+        searchQuery,
+        selectedFilter,
+        selectedCategory
+    ) { query, filter, category ->
+        Triple(query, filter, category)
+    }
 
     val uiState: StateFlow<TransactionsUiState> = combine(
         transactionRepository.observeAll(),
         categoryRepository.observeAll(),
         walletRepository.observeAll(),
-        searchQuery,
-        selectedFilter
-    ) { transactions, categories, wallets, query, filter ->
+        filterInputsFlow
+    ) { transactions, categories, wallets, (query, filter, categoryFilter) ->
         val categoryMap = categories.associateBy { it.id }
         val walletMap = wallets.associateBy { it.id }
         val trimmedQuery = query.trim().lowercase()
@@ -68,6 +78,10 @@ class TransactionsViewModel @Inject constructor(
                 TransactionFilter.TRANSFER -> tx.type == TransactionType.TRANSFER
             }
             if (!matchesFilter) return@filter false
+
+            if (categoryFilter != null && tx.categoryId != categoryFilter.first) {
+                return@filter false
+            }
 
             if (trimmedQuery.isEmpty()) return@filter true
             val categoryName = tx.categoryId?.let { categoryMap[it]?.name }.orEmpty()
@@ -93,6 +107,8 @@ class TransactionsViewModel @Inject constructor(
         TransactionsUiState(
             searchQuery = query,
             selectedFilter = filter,
+            selectedCategoryId = categoryFilter?.first,
+            selectedCategoryName = categoryFilter?.second,
             groups = grouped,
             hasAnyTransaction = transactions.isNotEmpty()
         )
@@ -108,6 +124,15 @@ class TransactionsViewModel @Inject constructor(
 
     fun onFilterSelected(filter: TransactionFilter) {
         selectedFilter.value = filter
+    }
+
+    fun filterByCategory(categoryId: Long, categoryName: String) {
+        selectedFilter.value = TransactionFilter.EXPENSE
+        selectedCategory.value = categoryId to categoryName
+    }
+
+    fun clearCategoryFilter() {
+        selectedCategory.value = null
     }
 
     fun deleteTransaction(id: Long) {

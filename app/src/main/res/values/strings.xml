@@ -107,4 +107,81 @@
     <string name="home_see_all">Lihat semua</string>
     <string name="home_empty_title">Mulai catat keuanganmu</string>
     <string name="home_empty_desc">Catat pemasukan dan pengeluaran harianmu agar lebih terkontrol.</string>
+    <string name="home_budget_title">Anggaran Paling Kritis</string>
+    <string name="home_budget_sub">%1$s • %2$s / %3$s</string>
+
+    <!-- Lainnya -->
+    <string name="more_wallets_title">Dompet</string>
+    <string name="more_wallets_desc">Kelola dompet, saldo awal, dan transfer cepat</string>
+    <string name="more_budgets_title">Anggaran</string>
+    <string name="more_budgets_desc">Atur batas pengeluaran bulanan per kategori</string>
+
+    <!-- Dompet -->
+    <string name="wallets_title">Dompet</string>
+    <string name="wallets_total_balance">Total Saldo Semua Dompet</string>
+    <string name="wallets_count_label">%1$d dompet aktif</string>
+    <string name="wallets_quick_transfer">Transfer Antar Dompet</string>
+    <string name="wallets_add">Tambah Dompet</string>
+    <string name="wallets_edit">Edit Dompet</string>
+    <string name="wallets_name_label">Nama Dompet</string>
+    <string name="wallets_name_placeholder">Contoh: BCA, GoPay, Dompet Utama</string>
+    <string name="wallets_type_label">Tipe Dompet</string>
+    <string name="wallet_type_cash">Tunai</string>
+    <string name="wallet_type_bank">Bank</string>
+    <string name="wallet_type_ewallet">E-wallet</string>
+    <string name="wallet_type_other">Lainnya</string>
+    <string name="wallets_initial_balance_label">Saldo Awal</string>
+    <string name="wallets_initial_balance_placeholder">0</string>
+    <string name="wallets_initial_balance_sub">Awal: %1$s</string>
+    <string name="wallets_icon_label">Ikon</string>
+    <string name="wallets_color_label">Warna</string>
+    <string name="wallets_error_name">Nama dompet tidak boleh kosong</string>
+    <string name="wallets_error_balance">Saldo awal tidak valid</string>
+    <string name="wallets_delete_title">Hapus %1$s?</string>
+    <string name="wallets_delete_message">Dompet dan SEMUA transaksinya akan dihapus.</string>
+    <string name="wallets_saved_snackbar">Dompet disimpan</string>
+    <string name="wallets_deleted_snackbar">Dompet dihapus</string>
+
+    <!-- Anggaran -->
+    <string name="budgets_title">Anggaran</string>
+    <string name="budgets_add">Tambah Anggaran</string>
+    <string name="budgets_edit">Edit Anggaran</string>
+    <string name="budgets_empty_title">Belum ada anggaran</string>
+    <string name="budgets_empty_desc">Tetapkan batas pengeluaran bulanan agar lebih terkendali.</string>
+    <string name="budgets_percent_label">%1$d%%</string>
+    <string name="budgets_spent_label">Terpakai</string>
+    <string name="budgets_limit_label">Batas</string>
+    <string name="budgets_remaining_label">Sisa</string>
+    <string name="budgets_over_label">Melebihi</string>
+    <string name="budgets_limit_input_label">Batas Anggaran Bulanan</string>
+    <string name="budgets_limit_input_placeholder">Contoh: 1.500.000</string>
+    <string name="budgets_error_category">Pilih kategori terlebih dahulu</string>
+    <string name="budgets_error_limit">Batas anggaran harus lebih dari Rp0</string>
+    <string name="budgets_delete_title">Hapus anggaran %1$s?</string>
+    <string name="budgets_delete_message">Anggaran kategori ini akan dihapus.</string>
+    <string name="budgets_saved_snackbar">Anggaran disimpan</string>
+    <string name="budgets_deleted_snackbar">Anggaran dihapus</string>
+    <string name="budget_notif_channel_name">Peringatan Anggaran</string>
+    <string name="budget_notif_channel_desc">Notifikasi saat pengeluaran mendekati atau melebihi batas anggaran</string>
+    <string name="budget_notif_80_title">Anggaran %1$s mencapai 80%%</string>
+    <string name="budget_notif_100_title">Anggaran %1$s mencapai 100%%</string>
+    <string name="budget_notif_body">Terpakai %1$d%% (%2$s dari %3$s)</string>
+
+    <!-- Statistik -->
+    <string name="stats_period_week">Minggu ini</string>
+    <string name="stats_period_month">Bulan ini</string>
+    <string name="stats_period_year">Tahun ini</string>
+    <string name="stats_prev_period">Periode sebelumnya</string>
+    <string name="stats_next_period">Periode berikutnya</string>
+    <string name="stats_net_balance">Selisih Periode Ini</string>
+    <string name="stats_compare_up">↑ %1$d%% dibanding periode sebelumnya</string>
+    <string name="stats_compare_down">↓ %1$d%% dibanding periode sebelumnya</string>
+    <string name="stats_compare_same">Sama dengan periode sebelumnya</string>
+    <string name="stats_compare_none">Belum ada pembanding periode sebelumnya</string>
+    <string name="stats_donut_title">Pengeluaran per Kategori</string>
+    <string name="stats_trend_title">Tren Pengeluaran</string>
+    <string name="stats_top_categories_title">5 Kategori Terbesar</string>
+    <string name="stats_empty_title">Belum ada data statistik</string>
+    <string name="stats_empty_desc">Catat transaksi pada periode ini untuk melihat ringkasan dan grafik.</string>
+    <string name="history_filter_category">Kategori: %1$s ✕</string>
 </resources>

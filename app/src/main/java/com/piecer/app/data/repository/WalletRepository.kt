@@ -1,5 +1,6 @@
 package com.piecer.app.data.repository
 
+import com.piecer.app.data.local.dao.TransactionDao
 import com.piecer.app.data.local.dao.WalletDao
 import com.piecer.app.data.local.dao.WalletWithBalance
 import com.piecer.app.data.local.entity.WalletEntity
@@ -19,7 +20,8 @@ interface WalletRepository {
 
 @Singleton
 class WalletRepositoryImpl @Inject constructor(
-    private val walletDao: WalletDao
+    private val walletDao: WalletDao,
+    private val transactionDao: TransactionDao
 ) : WalletRepository {
     override fun observeAll(): Flow<List<WalletEntity>> = walletDao.observeAll()
 
@@ -35,5 +37,8 @@ class WalletRepositoryImpl @Inject constructor(
 
     override suspend fun update(wallet: WalletEntity) = walletDao.update(wallet)
 
-    override suspend fun delete(wallet: WalletEntity) = walletDao.delete(wallet)
+    override suspend fun delete(wallet: WalletEntity) {
+        transactionDao.deleteByWalletId(wallet.id)
+        walletDao.delete(wallet)
+    }
 }

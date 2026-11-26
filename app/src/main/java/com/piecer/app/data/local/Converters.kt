@@ -1,6 +1,7 @@
 package com.piecer.app.data.local
 
 import androidx.room.TypeConverter
+import com.piecer.app.data.local.entity.BudgetPeriodType
 import com.piecer.app.data.local.entity.CategoryType
 import com.piecer.app.data.local.entity.TransactionType
 import com.piecer.app.data.local.entity.WalletType
@@ -23,4 +24,10 @@ class Converters {
 
     @TypeConverter
     fun toTransactionType(value: String): TransactionType = TransactionType.valueOf(value)
+
+    @TypeConverter
+    fun fromBudgetPeriodType(value: BudgetPeriodType): String = value.name
+
+    @TypeConverter
+    fun toBudgetPeriodType(value: String): BudgetPeriodType = BudgetPeriodType.valueOf(value)
 }

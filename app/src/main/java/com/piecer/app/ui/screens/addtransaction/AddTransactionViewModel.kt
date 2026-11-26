@@ -10,6 +10,7 @@ import com.piecer.app.data.local.entity.WalletEntity
 import com.piecer.app.data.repository.CategoryRepository
 import com.piecer.app.data.repository.TransactionRepository
 import com.piecer.app.data.repository.WalletRepository
+import com.piecer.app.util.BudgetNotificationHelper
 import com.piecer.app.util.KeypadUtils
 import com.piecer.app.util.TransactionValidationError
 import com.piecer.app.util.validateTransactionInput
@@ -66,7 +67,8 @@ private data class FormDraft(
 class AddTransactionViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository,
     categoryRepository: CategoryRepository,
-    walletRepository: WalletRepository
+    walletRepository: WalletRepository,
+    private val budgetNotificationHelper: BudgetNotificationHelper
 ) : ViewModel() {
 
     private val draft = MutableStateFlow(FormDraft())
@@ -123,8 +125,11 @@ class AddTransactionViewModel @Inject constructor(
         initialValue = AddTransactionUiState()
     )
 
-    fun startNew() {
-        draft.value = FormDraft(dateMillis = System.currentTimeMillis())
+    fun startNew(initialType: TransactionType = TransactionType.EXPENSE) {
+        draft.value = FormDraft(
+            type = initialType,
+            dateMillis = System.currentTimeMillis()
+        )
     }
 
     fun startEdit(transactionId: Long) {
@@ -239,6 +244,9 @@ class AddTransactionViewModel @Inject constructor(
                 transactionRepository.update(entity)
             } else {
                 transactionRepository.insert(entity)
+            }
+            if (entity.type == TransactionType.EXPENSE) {
+                budgetNotificationHelper.evaluateCurrentMonthBudgets(now)
             }
             draft.update { it.copy(isSaving = false) }
             onSaved()

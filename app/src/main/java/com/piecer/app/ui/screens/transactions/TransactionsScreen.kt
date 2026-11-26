@@ -112,6 +112,15 @@ fun TransactionsScreen(
             horizontalArrangement = Arrangement.spacedBy(spacing.sm),
             contentPadding = PaddingValues(vertical = spacing.xs)
         ) {
+            uiState.selectedCategoryName?.let { categoryName ->
+                item(key = "category_filter") {
+                    PiecerChip(
+                        label = stringResource(id = R.string.history_filter_category, categoryName),
+                        selected = true,
+                        onClick = viewModel::clearCategoryFilter
+                    )
+                }
+            }
             items(filterOptions, key = { it.first.name }) { (filter, labelRes) ->
                 PiecerChip(
                     label = stringResource(id = labelRes),

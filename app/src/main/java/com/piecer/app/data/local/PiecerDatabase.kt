@@ -5,10 +5,13 @@ import android.database.sqlite.SQLiteDatabase
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.piecer.app.data.local.dao.BudgetDao
 import com.piecer.app.data.local.dao.CategoryDao
 import com.piecer.app.data.local.dao.TransactionDao
 import com.piecer.app.data.local.dao.WalletDao
+import com.piecer.app.data.local.entity.BudgetEntity
 import com.piecer.app.data.local.entity.CategoryEntity
 import com.piecer.app.data.local.entity.CategoryType
 import com.piecer.app.data.local.entity.TransactionEntity
@@ -19,9 +22,10 @@ import com.piecer.app.data.local.entity.WalletType
     entities = [
         WalletEntity::class,
         CategoryEntity::class,
-        TransactionEntity::class
+        TransactionEntity::class,
+        BudgetEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -29,9 +33,30 @@ abstract class PiecerDatabase : RoomDatabase() {
     abstract fun walletDao(): WalletDao
     abstract fun categoryDao(): CategoryDao
     abstract fun transactionDao(): TransactionDao
+    abstract fun budgetDao(): BudgetDao
 
     companion object {
         const val DATABASE_NAME = "piecer.db"
+
+        val MIGRATION_1_2: Migration = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `budgets` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `categoryId` INTEGER NOT NULL,
+                        `limitAmount` INTEGER NOT NULL,
+                        `periodType` TEXT NOT NULL DEFAULT 'MONTHLY',
+                        `createdAt` INTEGER NOT NULL,
+                        FOREIGN KEY(`categoryId`) REFERENCES `categories`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_budgets_categoryId_periodType` ON `budgets` (`categoryId`, `periodType`)"
+                )
+            }
+        }
 
         fun createSeedCallback(): Callback = object : Callback() {
             override fun onCreate(db: SupportSQLiteDatabase) {
