@@ -18,6 +18,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.PieChart
+import androidx.compose.material.icons.rounded.Savings
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -36,6 +38,8 @@ import com.piecer.app.ui.theme.PiecerTheme
 fun MoreScreen(
     onOpenWallets: () -> Unit,
     onOpenBudgets: () -> Unit,
+    onOpenGoals: () -> Unit,
+    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val spacing = PiecerTheme.spacing
@@ -72,6 +76,24 @@ fun MoreScreen(
                 title = stringResource(id = R.string.more_budgets_title),
                 subtitle = stringResource(id = R.string.more_budgets_desc),
                 onClick = onOpenBudgets
+            )
+        }
+
+        item {
+            MoreMenuCard(
+                icon = Icons.Rounded.Savings,
+                title = stringResource(id = R.string.more_goals_title),
+                subtitle = stringResource(id = R.string.more_goals_desc),
+                onClick = onOpenGoals
+            )
+        }
+
+        item {
+            MoreMenuCard(
+                icon = Icons.Rounded.Settings,
+                title = stringResource(id = R.string.more_settings_title),
+                subtitle = stringResource(id = R.string.more_settings_desc),
+                onClick = onOpenSettings
             )
         }
     }

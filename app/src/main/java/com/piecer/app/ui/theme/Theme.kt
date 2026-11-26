@@ -7,6 +7,9 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.staticCompositionLocalOf
+
+val LocalReduceMotion = staticCompositionLocalOf { false }
 
 private val LightColorScheme = lightColorScheme(
     primary = Ink,
@@ -57,6 +60,7 @@ object PiecerTheme {
 @Composable
 fun PiecerTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    reduceMotion: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
@@ -64,7 +68,8 @@ fun PiecerTheme(
 
     CompositionLocalProvider(
         LocalPiecerColors provides piecerColors,
-        LocalPiecerSpacing provides PiecerSpacing()
+        LocalPiecerSpacing provides PiecerSpacing(),
+        LocalReduceMotion provides reduceMotion
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

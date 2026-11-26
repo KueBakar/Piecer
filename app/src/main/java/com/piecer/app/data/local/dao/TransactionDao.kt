@@ -29,6 +29,9 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions ORDER BY date DESC, createdAt DESC, id DESC")
     fun observeAll(): Flow<List<TransactionEntity>>
 
+    @Query("SELECT * FROM transactions ORDER BY date DESC, createdAt DESC, id DESC")
+    suspend fun getAll(): List<TransactionEntity>
+
     @Query("SELECT * FROM transactions WHERE id = :id")
     fun observeById(id: Long): Flow<TransactionEntity?>
 
@@ -88,6 +91,9 @@ interface TransactionDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(transaction: TransactionEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(transactions: List<TransactionEntity>)
+
     @Update
     suspend fun update(transaction: TransactionEntity)
 
@@ -99,4 +105,7 @@ interface TransactionDao {
 
     @Query("DELETE FROM transactions WHERE walletId = :walletId OR toWalletId = :walletId")
     suspend fun deleteByWalletId(walletId: Long)
+
+    @Query("DELETE FROM transactions")
+    suspend fun deleteAll()
 }

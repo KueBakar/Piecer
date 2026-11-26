@@ -11,6 +11,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.piecer.app.R
 import com.piecer.app.data.local.entity.TransactionType
+import com.piecer.app.data.preferences.SettingsRepository
 import com.piecer.app.data.repository.BudgetRepository
 import com.piecer.app.data.repository.CategoryRepository
 import com.piecer.app.data.repository.TransactionRepository
@@ -26,7 +27,8 @@ class BudgetNotificationHelper @Inject constructor(
     @ApplicationContext private val context: Context,
     private val budgetRepository: BudgetRepository,
     private val transactionRepository: TransactionRepository,
-    private val categoryRepository: CategoryRepository
+    private val categoryRepository: CategoryRepository,
+    private val settingsRepository: SettingsRepository
 ) {
     private val prefs by lazy {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -36,10 +38,10 @@ class BudgetNotificationHelper @Inject constructor(
         val budgets = budgetRepository.getAll()
         if (budgets.isEmpty()) return
 
-        val monthStart = DateUtils.startOfMonthMillis(nowMillis)
-        val monthEnd = DateUtils.endOfMonthMillis(nowMillis)
+        val cycleStartDay = settingsRepository.getSettings().cycleStartDay
+        val period = FinancialCycleHelper.currentPeriod(nowMillis, cycleStartDay)
         val categoryTotals = transactionRepository
-            .observeTotalByCategory(TransactionType.EXPENSE, monthStart, monthEnd)
+            .observeTotalByCategory(TransactionType.EXPENSE, period.startMillis, period.endMillis)
             .first()
             .associate { it.categoryId to it.totalAmount }
 

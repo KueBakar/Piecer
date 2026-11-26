@@ -108,7 +108,8 @@ fun HomeScreen(
                 AmountText(
                     amount = uiState.totalBalance,
                     isHidden = uiState.isBalanceHidden,
-                    style = MaterialTheme.typography.displayLarge
+                    style = MaterialTheme.typography.displayLarge,
+                    animate = true
                 )
                 Spacer(modifier = Modifier.height(spacing.lg))
                 Row(
@@ -162,7 +163,8 @@ fun HomeScreen(
                     amount = uiState.dailyAllowance,
                     isHidden = uiState.isBalanceHidden,
                     tone = if (uiState.dailyAllowance > 0L) AmountTone.Income else AmountTone.Neutral,
-                    style = MaterialTheme.typography.headlineLarge
+                    style = MaterialTheme.typography.headlineLarge,
+                    animate = true
                 )
                 Spacer(modifier = Modifier.height(spacing.xs))
                 Text(

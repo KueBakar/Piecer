@@ -4,6 +4,8 @@ import com.piecer.app.data.repository.BudgetRepository
 import com.piecer.app.data.repository.BudgetRepositoryImpl
 import com.piecer.app.data.repository.CategoryRepository
 import com.piecer.app.data.repository.CategoryRepositoryImpl
+import com.piecer.app.data.repository.GoalRepository
+import com.piecer.app.data.repository.GoalRepositoryImpl
 import com.piecer.app.data.repository.TransactionRepository
 import com.piecer.app.data.repository.TransactionRepositoryImpl
 import com.piecer.app.data.repository.WalletRepository
@@ -33,4 +35,8 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindBudgetRepository(impl: BudgetRepositoryImpl): BudgetRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindGoalRepository(impl: GoalRepositoryImpl): GoalRepository
 }

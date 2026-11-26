@@ -2,6 +2,7 @@ package com.piecer.app.ui.screens.statistics
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.piecer.app.data.preferences.SettingsRepository
 import com.piecer.app.data.repository.CategoryRepository
 import com.piecer.app.data.repository.TransactionRepository
 import com.piecer.app.util.CategoryExpenseSlice
@@ -14,6 +15,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import javax.inject.Inject
@@ -39,7 +42,8 @@ data class StatisticsUiState(
 @HiltViewModel
 class StatisticsViewModel @Inject constructor(
     transactionRepository: TransactionRepository,
-    categoryRepository: CategoryRepository
+    categoryRepository: CategoryRepository,
+    settingsRepository: SettingsRepository
 ) : ViewModel() {
 
     private val periodType = MutableStateFlow(StatsPeriodType.MONTH)
@@ -49,11 +53,22 @@ class StatisticsViewModel @Inject constructor(
         transactionRepository.observeAll(),
         categoryRepository.observeAll(),
         periodType,
-        periodOffset
-    ) { transactions, categories, type, offset ->
+        periodOffset,
+        settingsRepository.settingsFlow.map { it.cycleStartDay }.distinctUntilChanged()
+    ) { transactions, categories, type, offset, cycleStartDay ->
         val now = System.currentTimeMillis()
-        val currentRange = StatisticsCalculator.computePeriodRange(type, offset, now)
-        val previousRange = StatisticsCalculator.computePeriodRange(type, offset - 1, now)
+        val currentRange = StatisticsCalculator.computePeriodRange(
+            periodType = type,
+            offset = offset,
+            nowMillis = now,
+            cycleStartDay = cycleStartDay
+        )
+        val previousRange = StatisticsCalculator.computePeriodRange(
+            periodType = type,
+            offset = offset - 1,
+            nowMillis = now,
+            cycleStartDay = cycleStartDay
+        )
 
         val summary = StatisticsCalculator.computeSummaryComparison(
             transactions = transactions,

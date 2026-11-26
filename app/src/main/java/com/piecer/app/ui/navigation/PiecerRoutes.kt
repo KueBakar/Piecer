@@ -50,4 +50,6 @@ object PiecerRoutes {
     const val ADD_TRANSACTION = "add_transaction"
     const val WALLETS = "wallets"
     const val BUDGETS = "budgets"
+    const val GOALS = "goals"
+    const val SETTINGS = "settings"
 }

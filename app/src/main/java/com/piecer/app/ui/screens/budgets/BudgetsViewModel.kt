@@ -7,19 +7,24 @@ import com.piecer.app.data.local.entity.BudgetPeriodType
 import com.piecer.app.data.local.entity.CategoryEntity
 import com.piecer.app.data.local.entity.CategoryType
 import com.piecer.app.data.local.entity.TransactionType
+import com.piecer.app.data.preferences.SettingsRepository
 import com.piecer.app.data.repository.BudgetRepository
 import com.piecer.app.data.repository.CategoryRepository
 import com.piecer.app.data.repository.TransactionRepository
 import com.piecer.app.util.BudgetCalculator
 import com.piecer.app.util.BudgetNotificationHelper
 import com.piecer.app.util.BudgetProgress
-import com.piecer.app.util.DateUtils
+import com.piecer.app.util.FinancialCycleHelper
 import com.piecer.app.util.parseRupiahInput
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -54,25 +59,35 @@ data class BudgetsUiState(
     val pendingDeleteItem: BudgetCardItem? = null
 )
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class BudgetsViewModel @Inject constructor(
     private val budgetRepository: BudgetRepository,
     categoryRepository: CategoryRepository,
     transactionRepository: TransactionRepository,
-    private val budgetNotificationHelper: BudgetNotificationHelper
+    private val budgetNotificationHelper: BudgetNotificationHelper,
+    settingsRepository: SettingsRepository
 ) : ViewModel() {
 
     private val formState = MutableStateFlow(BudgetFormState())
     private val pendingDelete = MutableStateFlow<BudgetCardItem?>(null)
 
-    private val nowMillis = System.currentTimeMillis()
-    private val monthStart = DateUtils.startOfMonthMillis(nowMillis)
-    private val monthEnd = DateUtils.endOfMonthMillis(nowMillis)
+    private val categoryTotalsFlow = settingsRepository.settingsFlow
+        .map { it.cycleStartDay }
+        .distinctUntilChanged()
+        .flatMapLatest { startDay ->
+            val period = FinancialCycleHelper.currentPeriod(cycleStartDay = startDay)
+            transactionRepository.observeTotalByCategory(
+                TransactionType.EXPENSE,
+                period.startMillis,
+                period.endMillis
+            )
+        }
 
     val uiState: StateFlow<BudgetsUiState> = combine(
         budgetRepository.observeAll(),
         categoryRepository.observeByType(CategoryType.EXPENSE),
-        transactionRepository.observeTotalByCategory(TransactionType.EXPENSE, monthStart, monthEnd),
+        categoryTotalsFlow,
         formState,
         pendingDelete
     ) { budgets, expenseCategories, categoryTotals, form, deleteTarget ->

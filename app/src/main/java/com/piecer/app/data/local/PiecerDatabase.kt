@@ -9,11 +9,13 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.piecer.app.data.local.dao.BudgetDao
 import com.piecer.app.data.local.dao.CategoryDao
+import com.piecer.app.data.local.dao.GoalDao
 import com.piecer.app.data.local.dao.TransactionDao
 import com.piecer.app.data.local.dao.WalletDao
 import com.piecer.app.data.local.entity.BudgetEntity
 import com.piecer.app.data.local.entity.CategoryEntity
 import com.piecer.app.data.local.entity.CategoryType
+import com.piecer.app.data.local.entity.GoalEntity
 import com.piecer.app.data.local.entity.TransactionEntity
 import com.piecer.app.data.local.entity.WalletEntity
 import com.piecer.app.data.local.entity.WalletType
@@ -23,9 +25,10 @@ import com.piecer.app.data.local.entity.WalletType
         WalletEntity::class,
         CategoryEntity::class,
         TransactionEntity::class,
-        BudgetEntity::class
+        BudgetEntity::class,
+        GoalEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -34,6 +37,7 @@ abstract class PiecerDatabase : RoomDatabase() {
     abstract fun categoryDao(): CategoryDao
     abstract fun transactionDao(): TransactionDao
     abstract fun budgetDao(): BudgetDao
+    abstract fun goalDao(): GoalDao
 
     companion object {
         const val DATABASE_NAME = "piecer.db"
@@ -54,6 +58,25 @@ abstract class PiecerDatabase : RoomDatabase() {
                 )
                 db.execSQL(
                     "CREATE UNIQUE INDEX IF NOT EXISTS `index_budgets_categoryId_periodType` ON `budgets` (`categoryId`, `periodType`)"
+                )
+            }
+        }
+
+        val MIGRATION_2_3: Migration = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `goals` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `name` TEXT NOT NULL,
+                        `targetAmount` INTEGER NOT NULL,
+                        `savedAmount` INTEGER NOT NULL,
+                        `deadline` INTEGER,
+                        `iconKey` TEXT NOT NULL,
+                        `colorKey` TEXT NOT NULL,
+                        `createdAt` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
                 )
             }
         }

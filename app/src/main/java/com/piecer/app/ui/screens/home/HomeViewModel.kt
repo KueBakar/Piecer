@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.piecer.app.data.local.entity.TransactionEntity
 import com.piecer.app.data.local.entity.TransactionType
+import com.piecer.app.data.preferences.SettingsRepository
 import com.piecer.app.data.repository.BudgetRepository
 import com.piecer.app.data.repository.CategoryRepository
 import com.piecer.app.data.repository.TransactionRepository
@@ -13,14 +14,18 @@ import com.piecer.app.util.BudgetCalculator
 import com.piecer.app.util.BudgetProgress
 import com.piecer.app.util.DailyExpensePoint
 import com.piecer.app.util.DateUtils
+import com.piecer.app.util.FinancialCycleHelper
 import com.piecer.app.util.calculateBolehJajanHariIni
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
 import javax.inject.Inject
@@ -51,33 +56,54 @@ data class HomeUiState(
     val hasAnyTransaction: Boolean = false
 )
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     walletRepository: WalletRepository,
     transactionRepository: TransactionRepository,
     categoryRepository: CategoryRepository,
-    budgetRepository: BudgetRepository
+    budgetRepository: BudgetRepository,
+    private val settingsRepository: SettingsRepository
 ) : ViewModel() {
 
-    private val isBalanceHidden = MutableStateFlow(false)
+    private val cycleStartDayFlow = settingsRepository.settingsFlow
+        .map { it.cycleStartDay }
+        .distinctUntilChanged()
 
-    private val nowMillis = System.currentTimeMillis()
-    private val monthStart = DateUtils.startOfMonthMillis(nowMillis)
-    private val monthEnd = DateUtils.endOfMonthMillis(nowMillis)
+    private val monthlySummaryFlow = cycleStartDayFlow.flatMapLatest { startDay ->
+        val period = FinancialCycleHelper.currentPeriod(cycleStartDay = startDay)
+        transactionRepository.observePeriodSummary(period.startMillis, period.endMillis)
+    }
 
     private val baseDataFlow = combine(
         walletRepository.observeWalletsWithBalance(),
-        transactionRepository.observePeriodSummary(monthStart, monthEnd),
+        monthlySummaryFlow,
         transactionRepository.observeAll(),
         categoryRepository.observeAll(),
-        budgetRepository.observeAll()
-    ) { walletsWithBalance, monthlySummary, allTransactions, categories, budgets ->
+        budgetRepository.observeAll(),
+        cycleStartDayFlow
+    ) { values ->
+        @Suppress("UNCHECKED_CAST")
+        val walletsWithBalance = values[0] as List<com.piecer.app.data.local.dao.WalletWithBalance>
+        val monthlySummary = values[1] as com.piecer.app.data.local.dao.PeriodSummary
+        @Suppress("UNCHECKED_CAST")
+        val allTransactions = values[2] as List<TransactionEntity>
+        @Suppress("UNCHECKED_CAST")
+        val categories = values[3] as List<com.piecer.app.data.local.entity.CategoryEntity>
+        @Suppress("UNCHECKED_CAST")
+        val budgets = values[4] as List<com.piecer.app.data.local.entity.BudgetEntity>
+        val cycleStartDay = values[5] as Int
+
         val currentNow = System.currentTimeMillis()
         val totalBalance = walletsWithBalance.sumOf { it.currentBalance }
-        val remainingDays = DateUtils.remainingDaysInMonth(currentNow)
+        val cyclePeriod = FinancialCycleHelper.currentPeriod(
+            nowMillis = currentNow,
+            cycleStartDay = cycleStartDay
+        )
+        val remainingDays = cyclePeriod.remainingDays
 
         // Rumus Boleh Jajan Hari Ini:
-        // (pemasukan bulan ini - pengeluaran bulan ini) / sisa hari di bulan ini, minimal 0.
+        // (pemasukan siklus ini - pengeluaran siklus ini) / sisa hari di siklus ini, minimal 0.
         val dailyAllowance = calculateBolehJajanHariIni(
             monthlyIncome = monthlySummary.totalIncome,
             monthlyExpense = monthlySummary.totalExpense,
@@ -87,8 +113,8 @@ class HomeViewModel @Inject constructor(
         val categoryNames = categories.associate { it.id to it.name }
         val walletNames = walletsWithBalance.associate { it.walletId to it.name }
 
-        val currentMonthStart = DateUtils.startOfMonthMillis(currentNow)
-        val currentMonthEnd = DateUtils.endOfMonthMillis(currentNow)
+        val currentMonthStart = cyclePeriod.startMillis
+        val currentMonthEnd = cyclePeriod.endMillis
         val spentByCategory = allTransactions
             .asSequence()
             .filter {
@@ -132,7 +158,7 @@ class HomeViewModel @Inject constructor(
 
     val uiState: StateFlow<HomeUiState> = combine(
         baseDataFlow,
-        isBalanceHidden
+        settingsRepository.settingsFlow.map { it.isBalanceHidden }.distinctUntilChanged()
     ) { state, hidden ->
         state.copy(isBalanceHidden = hidden)
     }.stateIn(
@@ -142,7 +168,10 @@ class HomeViewModel @Inject constructor(
     )
 
     fun toggleBalanceVisibility() {
-        isBalanceHidden.update { !it }
+        viewModelScope.launch {
+            val current = settingsRepository.getSettings().isBalanceHidden
+            settingsRepository.setBalanceHidden(!current)
+        }
     }
 
     private fun resolveGreetingPeriod(epochMillis: Long): GreetingPeriod {

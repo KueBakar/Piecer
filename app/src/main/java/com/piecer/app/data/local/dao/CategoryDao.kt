@@ -16,6 +16,9 @@ interface CategoryDao {
     @Query("SELECT * FROM categories ORDER BY isDefault DESC, id ASC")
     fun observeAll(): Flow<List<CategoryEntity>>
 
+    @Query("SELECT * FROM categories ORDER BY isDefault DESC, id ASC")
+    suspend fun getAll(): List<CategoryEntity>
+
     @Query("SELECT * FROM categories WHERE type = :type ORDER BY isDefault DESC, id ASC")
     fun observeByType(type: CategoryType): Flow<List<CategoryEntity>>
 
@@ -33,4 +36,7 @@ interface CategoryDao {
 
     @Delete
     suspend fun delete(category: CategoryEntity)
+
+    @Query("DELETE FROM categories")
+    suspend fun deleteAll()
 }

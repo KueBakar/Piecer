@@ -27,6 +27,9 @@ interface WalletDao {
     @Query("SELECT * FROM wallets ORDER BY createdAt ASC, id ASC")
     fun observeAll(): Flow<List<WalletEntity>>
 
+    @Query("SELECT * FROM wallets ORDER BY createdAt ASC, id ASC")
+    suspend fun getAll(): List<WalletEntity>
+
     @Query("SELECT * FROM wallets WHERE id = :id")
     fun observeById(id: Long): Flow<WalletEntity?>
 
@@ -91,9 +94,15 @@ interface WalletDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(wallet: WalletEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(wallets: List<WalletEntity>)
+
     @Update
     suspend fun update(wallet: WalletEntity)
 
     @Delete
     suspend fun delete(wallet: WalletEntity)
+
+    @Query("DELETE FROM wallets")
+    suspend fun deleteAll()
 }

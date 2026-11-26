@@ -39,4 +39,36 @@ class PiecerMigrationTest {
         val createIndexSql = executedSql[1]
         assertTrue(createIndexSql.contains("CREATE UNIQUE INDEX IF NOT EXISTS `index_budgets_categoryId_periodType`"))
     }
+
+    @Test
+    fun `migration 2 to 3 has correct version range and executes goals DDL`() {
+        val migration = PiecerDatabase.MIGRATION_2_3
+        assertEquals(2, migration.startVersion)
+        assertEquals(3, migration.endVersion)
+
+        val executedSql = mutableListOf<String>()
+        val dbProxy = Proxy.newProxyInstance(
+            SupportSQLiteDatabase::class.java.classLoader,
+            arrayOf(SupportSQLiteDatabase::class.java)
+        ) { _, method, args ->
+            if (method.name == "execSQL" && args != null && args.isNotEmpty()) {
+                executedSql.add(args[0] as String)
+            }
+            null
+        } as SupportSQLiteDatabase
+
+        migration.migrate(dbProxy)
+
+        assertEquals(1, executedSql.size)
+        val createTableSql = executedSql[0]
+        assertTrue(createTableSql.contains("CREATE TABLE IF NOT EXISTS `goals`"))
+        assertTrue(createTableSql.contains("`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL"))
+        assertTrue(createTableSql.contains("`name` TEXT NOT NULL"))
+        assertTrue(createTableSql.contains("`targetAmount` INTEGER NOT NULL"))
+        assertTrue(createTableSql.contains("`savedAmount` INTEGER NOT NULL"))
+        assertTrue(createTableSql.contains("`deadline` INTEGER"))
+        assertTrue(createTableSql.contains("`iconKey` TEXT NOT NULL"))
+        assertTrue(createTableSql.contains("`colorKey` TEXT NOT NULL"))
+        assertTrue(createTableSql.contains("`createdAt` INTEGER NOT NULL"))
+    }
 }

@@ -56,7 +56,8 @@ object StatisticsCalculator {
         periodType: StatsPeriodType,
         offset: Int,
         nowMillis: Long = System.currentTimeMillis(),
-        zoneId: ZoneId = ZoneId.systemDefault()
+        zoneId: ZoneId = ZoneId.systemDefault(),
+        cycleStartDay: Int = 1
     ): PeriodRange {
         val today = Instant.ofEpochMilli(nowMillis).atZone(zoneId).toLocalDate()
         return when (periodType) {
@@ -71,11 +72,14 @@ object StatisticsCalculator {
                 PeriodRange(startMillis, endMillis, label)
             }
             StatsPeriodType.MONTH -> {
-                val targetMonth = today.withDayOfMonth(1).plusMonths(offset.toLong())
-                val startMillis = targetMonth.atStartOfDay(zoneId).toInstant().toEpochMilli()
-                val endMillis = targetMonth.plusMonths(1).atStartOfDay(zoneId).toInstant().toEpochMilli() - 1L
-                val label = targetMonth.format(monthYearFormatter)
-                PeriodRange(startMillis, endMillis, label)
+                val cycle = FinancialCycleHelper.periodForOffset(
+                    nowMillis = nowMillis,
+                    cycleStartDay = cycleStartDay,
+                    offset = offset,
+                    zoneId = zoneId
+                )
+                val label = FinancialCycleHelper.formatCycleLabel(cycle, cycleStartDay)
+                PeriodRange(cycle.startMillis, cycle.endMillis, label)
             }
             StatsPeriodType.YEAR -> {
                 val targetYear = today.withDayOfYear(1).plusYears(offset.toLong())
