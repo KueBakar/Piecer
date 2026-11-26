@@ -13,6 +13,7 @@ import com.piecer.app.data.preferences.ThemeMode
 import com.piecer.app.data.repository.CategoryRepository
 import com.piecer.app.data.repository.TransactionRepository
 import com.piecer.app.data.repository.WalletRepository
+import com.piecer.app.util.BreadcrumbLog
 import com.piecer.app.util.CsvExporter
 import com.piecer.app.util.DailyReminderScheduler
 import com.piecer.app.util.PinHasher
@@ -104,15 +105,22 @@ class SettingsViewModel @Inject constructor(
             val salt = PinHasher.generateSalt()
             val hash = PinHasher.hashPin(pin, salt)
             settingsRepository.setPin(hash, salt)
+            BreadcrumbLog.record("SECURITY", "PIN enabled/updated", syncWrite = true)
         }
     }
 
     fun disablePin() {
-        viewModelScope.launch { settingsRepository.clearPin() }
+        viewModelScope.launch {
+            settingsRepository.clearPin()
+            BreadcrumbLog.record("SECURITY", "PIN disabled", syncWrite = true)
+        }
     }
 
     fun setBiometricEnabled(enabled: Boolean) {
-        viewModelScope.launch { settingsRepository.setBiometricEnabled(enabled) }
+        viewModelScope.launch {
+            settingsRepository.setBiometricEnabled(enabled)
+            BreadcrumbLog.record("SECURITY", "Biometric setting changed: enabled=$enabled", syncWrite = true)
+        }
     }
 
     fun defaultBackupFileName(): String {

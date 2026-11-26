@@ -12,19 +12,23 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
@@ -52,6 +56,7 @@ import com.piecer.app.ui.screens.home.HomeViewModel
 import com.piecer.app.ui.screens.more.MoreScreen
 import com.piecer.app.ui.screens.onboarding.OnboardingScreen
 import com.piecer.app.ui.screens.security.LockScreen
+import com.piecer.app.ui.screens.settings.CrashReportScreen
 import com.piecer.app.ui.screens.settings.SettingsScreen
 import com.piecer.app.ui.screens.settings.SettingsViewModel
 import com.piecer.app.ui.screens.statistics.StatisticsScreen
@@ -61,6 +66,8 @@ import com.piecer.app.ui.screens.transactions.TransactionsViewModel
 import com.piecer.app.ui.screens.wallets.WalletsScreen
 import com.piecer.app.ui.screens.wallets.WalletsViewModel
 import com.piecer.app.ui.theme.PiecerTheme
+import com.piecer.app.util.BreadcrumbLog
+import com.piecer.app.util.CrashReporter
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -108,6 +115,10 @@ class MainActivity : FragmentActivity() {
             }
 
             val canUseBiometric = remember(this) { canAuthenticateBiometric() }
+            var showUnseenCrashDialog by remember {
+                mutableStateOf(BuildConfig.DEBUG && CrashReporter.hasUnseenCrashReport(this@MainActivity))
+            }
+            var openCrashReportRequest by remember { mutableStateOf(false) }
 
             PiecerTheme(
                 darkTheme = darkTheme,
@@ -126,7 +137,9 @@ class MainActivity : FragmentActivity() {
                             budgetsViewModel = budgetsViewModel,
                             goalsViewModel = goalsViewModel,
                             settingsViewModel = settingsViewModel,
-                            onPinConfigured = mainViewModel::markSessionUnlocked
+                            onPinConfigured = mainViewModel::markSessionUnlocked,
+                            openCrashReportRequest = openCrashReportRequest,
+                            onCrashReportRequestHandled = { openCrashReportRequest = false }
                         )
 
                         if (isLocked && settings.isPinEnabled) {
@@ -147,6 +160,38 @@ class MainActivity : FragmentActivity() {
                             onFinished = mainViewModel::onSplashFinished
                         )
                     }
+
+                    if (BuildConfig.DEBUG && showUnseenCrashDialog && !showSplash && (!isLocked || !settings.isPinEnabled)) {
+                        AlertDialog(
+                            onDismissRequest = {
+                                CrashReporter.markCrashReportSeen(this@MainActivity)
+                                showUnseenCrashDialog = false
+                            },
+                            title = { Text(text = stringResource(id = R.string.debug_crash_dialog_title)) },
+                            text = { Text(text = stringResource(id = R.string.debug_crash_dialog_message)) },
+                            confirmButton = {
+                                TextButton(
+                                    onClick = {
+                                        CrashReporter.markCrashReportSeen(this@MainActivity)
+                                        showUnseenCrashDialog = false
+                                        openCrashReportRequest = true
+                                    }
+                                ) {
+                                    Text(text = stringResource(id = R.string.debug_crash_dialog_view))
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(
+                                    onClick = {
+                                        CrashReporter.markCrashReportSeen(this@MainActivity)
+                                        showUnseenCrashDialog = false
+                                    }
+                                ) {
+                                    Text(text = stringResource(id = R.string.debug_crash_dialog_dismiss))
+                                }
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -162,6 +207,11 @@ class MainActivity : FragmentActivity() {
         mainViewModel.onAppStop(isChangingConfigurations)
     }
 
+    override fun finish() {
+        BreadcrumbLog.record("ACTIVITY", "MainActivity.finish() called", syncWrite = true)
+        super.finish()
+    }
+
     private fun canAuthenticateBiometric(): Boolean {
         return try {
             val manager = BiometricManager.from(this)
@@ -169,14 +219,30 @@ class MainActivity : FragmentActivity() {
                 BiometricManager.Authenticators.BIOMETRIC_STRONG or
                     BiometricManager.Authenticators.BIOMETRIC_WEAK
             ) == BiometricManager.BIOMETRIC_SUCCESS
-        } catch (_: Exception) {
+        } catch (t: Throwable) {
+            BreadcrumbLog.record(
+                "BIOMETRIC",
+                "canAuthenticateBiometric threw ${t::class.java.simpleName}: ${t.message}",
+                syncWrite = true
+            )
             false
         }
     }
 
     private fun launchBiometricPrompt() {
-        if (!canAuthenticateBiometric()) {
+        BreadcrumbLog.record("BIOMETRIC", "launchBiometricPrompt called", syncWrite = true)
+        if (isFinishing || isDestroyed || supportFragmentManager.isStateSaved) {
+            BreadcrumbLog.record(
+                "BIOMETRIC",
+                "Skipped prompt: finishing=$isFinishing destroyed=$isDestroyed stateSaved=${supportFragmentManager.isStateSaved}",
+                syncWrite = true
+            )
             mainViewModel.setBiometricPromptShowing(false)
+            return
+        }
+        val fallbackMessage = getString(R.string.lock_biometric_unavailable_fallback)
+        if (!canAuthenticateBiometric()) {
+            mainViewModel.disableBiometricDueToFailure("canAuthenticate=false", fallbackMessage)
             return
         }
         try {
@@ -188,12 +254,50 @@ class MainActivity : FragmentActivity() {
                 object : BiometricPrompt.AuthenticationCallback() {
                     override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                         super.onAuthenticationSucceeded(result)
+                        BreadcrumbLog.record("BIOMETRIC", "onAuthenticationSucceeded", syncWrite = true)
                         mainViewModel.onBiometricSuccess()
                     }
 
                     override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
                         super.onAuthenticationError(errorCode, errString)
-                        mainViewModel.setBiometricPromptShowing(false)
+                        BreadcrumbLog.record(
+                            "BIOMETRIC",
+                            "onAuthenticationError code=$errorCode msg=$errString",
+                            syncWrite = true
+                        )
+                        when (errorCode) {
+                            BiometricPrompt.ERROR_USER_CANCELED,
+                            BiometricPrompt.ERROR_NEGATIVE_BUTTON,
+                            BiometricPrompt.ERROR_CANCELED -> {
+                                mainViewModel.setBiometricPromptShowing(false)
+                            }
+                            BiometricPrompt.ERROR_HW_UNAVAILABLE,
+                            BiometricPrompt.ERROR_UNABLE_TO_PROCESS,
+                            BiometricPrompt.ERROR_VENDOR,
+                            BiometricPrompt.ERROR_NO_BIOMETRICS,
+                            BiometricPrompt.ERROR_HW_NOT_PRESENT,
+                            BiometricPrompt.ERROR_NO_DEVICE_CREDENTIAL,
+                            BiometricPrompt.ERROR_SECURITY_UPDATE_REQUIRED,
+                            BiometricPrompt.ERROR_LOCKOUT_PERMANENT -> {
+                                mainViewModel.disableBiometricDueToFailure(
+                                    reason = "errorCode=$errorCode ($errString)",
+                                    fallbackMessage = fallbackMessage
+                                )
+                            }
+                            else -> {
+                                if (mainViewModel.recordBiometricNonFatalErrorAndShouldDisable()) {
+                                    mainViewModel.disableBiometricDueToFailure(
+                                        reason = "repeated errorCode=$errorCode ($errString)",
+                                        fallbackMessage = fallbackMessage
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    override fun onAuthenticationFailed() {
+                        super.onAuthenticationFailed()
+                        BreadcrumbLog.record("BIOMETRIC", "onAuthenticationFailed", syncWrite = false)
                     }
                 }
             )
@@ -203,8 +307,16 @@ class MainActivity : FragmentActivity() {
                 .setNegativeButtonText(getString(R.string.lock_biometric_use_pin))
                 .build()
             prompt.authenticate(promptInfo)
-        } catch (_: Exception) {
-            mainViewModel.setBiometricPromptShowing(false)
+        } catch (t: Throwable) {
+            BreadcrumbLog.record(
+                "BIOMETRIC",
+                "Exception in launchBiometricPrompt: ${t::class.java.simpleName}: ${t.message}",
+                syncWrite = true
+            )
+            mainViewModel.disableBiometricDueToFailure(
+                reason = "exception=${t::class.java.simpleName}",
+                fallbackMessage = fallbackMessage
+            )
         }
     }
 }
@@ -220,16 +332,32 @@ fun PiecerApp(
     budgetsViewModel: BudgetsViewModel,
     goalsViewModel: GoalsViewModel,
     settingsViewModel: SettingsViewModel,
-    onPinConfigured: () -> Unit
+    onPinConfigured: () -> Unit,
+    openCrashReportRequest: Boolean = false,
+    onCrashReportRequestHandled: () -> Unit = {}
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
+    LaunchedEffect(currentRoute) {
+        if (currentRoute != null) {
+            BreadcrumbLog.record("NAV", "route=$currentRoute", syncWrite = true)
+        }
+    }
+    LaunchedEffect(openCrashReportRequest) {
+        if (BuildConfig.DEBUG && openCrashReportRequest) {
+            onCrashReportRequestHandled()
+            navController.navigate(PiecerRoutes.CRASH_REPORT) {
+                launchSingleTop = true
+            }
+        }
+    }
     val isFullScreen = currentRoute == PiecerRoutes.ADD_TRANSACTION ||
         currentRoute == PiecerRoutes.WALLETS ||
         currentRoute == PiecerRoutes.BUDGETS ||
         currentRoute == PiecerRoutes.GOALS ||
-        currentRoute == PiecerRoutes.SETTINGS
+        currentRoute == PiecerRoutes.SETTINGS ||
+        currentRoute == PiecerRoutes.CRASH_REPORT
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -380,8 +508,22 @@ fun PiecerApp(
                 SettingsScreen(
                     viewModel = settingsViewModel,
                     onBack = { navController.popBackStack() },
-                    onPinConfigured = onPinConfigured
+                    onPinConfigured = onPinConfigured,
+                    onOpenCrashReport = {
+                        if (BuildConfig.DEBUG) {
+                            navController.navigate(PiecerRoutes.CRASH_REPORT) {
+                                launchSingleTop = true
+                            }
+                        }
+                    }
                 )
+            }
+            if (BuildConfig.DEBUG) {
+                composable(PiecerRoutes.CRASH_REPORT) {
+                    CrashReportScreen(
+                        onBack = { navController.popBackStack() }
+                    )
+                }
             }
             composable(PiecerRoutes.ADD_TRANSACTION) {
                 AddTransactionScreen(

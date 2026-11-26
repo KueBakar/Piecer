@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.piecer.app.data.preferences.AppSettings
 import com.piecer.app.data.preferences.SettingsRepository
 import com.piecer.app.util.AppLockPolicy
+import com.piecer.app.util.BreadcrumbLog
 import com.piecer.app.util.PinHasher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,6 +44,7 @@ class MainViewModel @Inject constructor(
     private var hasInitializedLock = false
     private var lastBackgroundElapsedMs = 0L
     private var isBiometricPromptShowing = false
+    private var consecutiveBiometricErrors = 0
 
     init {
         viewModelScope.launch {
@@ -51,6 +53,7 @@ class MainViewModel @Inject constructor(
                 hasInitializedLock = true
                 if (initial.isPinEnabled) {
                     _isLocked.value = true
+                    BreadcrumbLog.record("LOCK", "State=LOCKED reason=cold_start_pin_enabled", syncWrite = true)
                 }
             }
             _isAppReady.value = true
@@ -71,8 +74,10 @@ class MainViewModel @Inject constructor(
     fun markSessionUnlocked() {
         hasInitializedLock = true
         lastBackgroundElapsedMs = 0L
+        consecutiveBiometricErrors = 0
         _pinError.value = null
         _isLocked.value = false
+        BreadcrumbLog.record("LOCK", "State=UNLOCKED reason=pin_configured", syncWrite = true)
     }
 
     fun onAppStart() {
@@ -87,6 +92,7 @@ class MainViewModel @Inject constructor(
         ) {
             _isLocked.value = true
             _pinError.value = null
+            BreadcrumbLog.record("LOCK", "State=LOCKED reason=foreground_timeout", syncWrite = true)
         }
     }
 
@@ -107,6 +113,7 @@ class MainViewModel @Inject constructor(
             val salt = current.pinSalt
             if (hash.isNullOrBlank() || salt.isNullOrBlank()) {
                 _isLocked.value = false
+                BreadcrumbLog.record("LOCK", "State=UNLOCKED reason=pin_missing_hash_fallback", syncWrite = true)
                 return@launch
             }
 
@@ -117,10 +124,13 @@ class MainViewModel @Inject constructor(
 
             if (PinHasher.verifyPin(pin, salt, hash)) {
                 settingsRepository.updatePinAttempts(0, 0L)
+                consecutiveBiometricErrors = 0
                 _pinError.value = null
                 _isLocked.value = false
+                BreadcrumbLog.record("LOCK", "State=UNLOCKED reason=pin_verified", syncWrite = true)
             } else {
                 val nextAttempts = current.failedPinAttempts + 1
+                BreadcrumbLog.record("LOCK", "PIN verification failed (attempts=$nextAttempts)", syncWrite = true)
                 if (nextAttempts >= PinHasher.MAX_FAILED_ATTEMPTS) {
                     settingsRepository.updatePinAttempts(
                         attempts = 0,
@@ -138,11 +148,29 @@ class MainViewModel @Inject constructor(
     fun onBiometricSuccess() {
         isBiometricPromptShowing = false
         lastBackgroundElapsedMs = 0L
+        consecutiveBiometricErrors = 0
         viewModelScope.launch {
             settingsRepository.updatePinAttempts(0, 0L)
         }
         _pinError.value = null
         _isLocked.value = false
+        BreadcrumbLog.record("LOCK", "State=UNLOCKED reason=biometric_verified", syncWrite = true)
+    }
+
+    fun recordBiometricNonFatalErrorAndShouldDisable(): Boolean {
+        isBiometricPromptShowing = false
+        consecutiveBiometricErrors += 1
+        return consecutiveBiometricErrors >= 2
+    }
+
+    fun disableBiometricDueToFailure(reason: String, fallbackMessage: String) {
+        isBiometricPromptShowing = false
+        consecutiveBiometricErrors = 0
+        viewModelScope.launch {
+            settingsRepository.setBiometricEnabled(false)
+        }
+        _pinError.value = fallbackMessage
+        BreadcrumbLog.record("BIOMETRIC", "Auto-disabled biometric: $reason", syncWrite = true)
     }
 
     fun completeOnboarding() {

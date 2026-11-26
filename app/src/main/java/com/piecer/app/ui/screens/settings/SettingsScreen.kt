@@ -61,6 +61,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.piecer.app.BuildConfig
 import com.piecer.app.R
 import com.piecer.app.data.preferences.ThemeMode
 import com.piecer.app.ui.components.PiecerCard
@@ -78,7 +79,8 @@ fun SettingsScreen(
     viewModel: SettingsViewModel,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
-    onPinConfigured: () -> Unit = {}
+    onPinConfigured: () -> Unit = {},
+    onOpenCrashReport: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val settings = uiState.settings
@@ -149,9 +151,13 @@ fun SettingsScreen(
     }
 
     val canUseBiometric = remember(context) {
-        val manager = BiometricManager.from(context)
-        manager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.BIOMETRIC_WEAK) ==
-            BiometricManager.BIOMETRIC_SUCCESS
+        try {
+            val manager = BiometricManager.from(context)
+            manager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.BIOMETRIC_WEAK) ==
+                BiometricManager.BIOMETRIC_SUCCESS
+        } catch (_: Throwable) {
+            false
+        }
     }
 
     LaunchedEffect(uiState.statusMessage, uiState.errorMessage) {
@@ -418,6 +424,22 @@ fun SettingsScreen(
                             title = stringResource(id = R.string.settings_csv_title),
                             subtitle = stringResource(id = R.string.settings_csv_desc),
                             onClick = { showCsvRangeDialog = true }
+                        )
+                    }
+                }
+            }
+
+            if (BuildConfig.DEBUG) {
+                item {
+                    SectionHeader(text = stringResource(id = R.string.settings_section_debug))
+                }
+
+                item {
+                    PiecerCard(variant = PiecerCardVariant.Light) {
+                        SettingsActionRow(
+                            title = stringResource(id = R.string.settings_crash_report_title),
+                            subtitle = stringResource(id = R.string.settings_crash_report_desc),
+                            onClick = onOpenCrashReport
                         )
                     }
                 }

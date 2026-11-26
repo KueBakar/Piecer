@@ -56,6 +56,7 @@ fun LockScreen(
 
     var pin by remember { mutableStateOf("") }
     var nowMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var hasAutoTriggeredBiometric by remember { mutableStateOf(false) }
 
     val remainingLockoutSeconds = ((lockoutUntilMillis - nowMillis + 999L) / 1000L)
         .coerceAtLeast(0L)
@@ -70,7 +71,8 @@ fun LockScreen(
     }
 
     LaunchedEffect(biometricEnabled, isLockedOut, canAutoTriggerBiometric) {
-        if (canAutoTriggerBiometric && biometricEnabled && !isLockedOut) {
+        if (!hasAutoTriggeredBiometric && canAutoTriggerBiometric && biometricEnabled && !isLockedOut) {
+            hasAutoTriggeredBiometric = true
             onBiometricClick()
         }
     }

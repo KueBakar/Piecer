@@ -51,4 +51,5 @@ object PiecerRoutes {
     const val BUDGETS = "budgets"
     const val GOALS = "goals"
     const val SETTINGS = "settings"
+    const val CRASH_REPORT = "crash_report"
 }

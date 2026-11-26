@@ -268,6 +268,24 @@
     <string name="lock_biometric_prompt_title">Buka Piecer</string>
     <string name="lock_biometric_prompt_subtitle">Gunakan sidik jari atau biometrik</string>
     <string name="lock_biometric_use_pin">Gunakan PIN</string>
+    <string name="lock_biometric_unavailable_fallback">Biometrik tidak tersedia di perangkat ini, gunakan PIN</string>
+
+    <string name="debug_crash_dialog_title">Laporan Crash</string>
+    <string name="debug_crash_dialog_message">Aplikasi sempat berhenti tak terduga. Lihat laporan?</string>
+    <string name="debug_crash_dialog_view">Lihat laporan</string>
+    <string name="debug_crash_dialog_dismiss">Tutup</string>
+    <string name="settings_section_debug">Diagnostik (Debug)</string>
+    <string name="settings_crash_report_title">Laporan masalah</string>
+    <string name="settings_crash_report_desc">Lihat crash terakhir dan jejak kejadian</string>
+    <string name="crash_report_title">Laporan Masalah</string>
+    <string name="crash_report_empty">Belum ada laporan crash tersimpan.</string>
+    <string name="crash_report_breadcrumbs_header">Jejak Kejadian Terkini</string>
+    <string name="crash_report_copy">Salin</string>
+    <string name="crash_report_share">Bagikan</string>
+    <string name="crash_report_clear">Hapus laporan</string>
+    <string name="crash_report_copied">Laporan disalin ke clipboard</string>
+    <string name="crash_report_cleared">Laporan dihapus</string>
+    <string name="crash_report_share_subject">Piecer Crash Report</string>
 
     <string name="onboarding_skip">Lewati</string>
     <string name="onboarding_next">Lanjut</string>
