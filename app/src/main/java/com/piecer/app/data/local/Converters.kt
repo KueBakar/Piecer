@@ -3,6 +3,7 @@ package com.piecer.app.data.local
 import androidx.room.TypeConverter
 import com.piecer.app.data.local.entity.BudgetPeriodType
 import com.piecer.app.data.local.entity.CategoryType
+import com.piecer.app.data.local.entity.RecurringInterval
 import com.piecer.app.data.local.entity.TransactionType
 import com.piecer.app.data.local.entity.WalletType
 
@@ -30,4 +31,10 @@ class Converters {
 
     @TypeConverter
     fun toBudgetPeriodType(value: String): BudgetPeriodType = BudgetPeriodType.valueOf(value)
+
+    @TypeConverter
+    fun fromRecurringInterval(value: RecurringInterval): String = value.name
+
+    @TypeConverter
+    fun toRecurringInterval(value: String): RecurringInterval = RecurringInterval.valueOf(value)
 }

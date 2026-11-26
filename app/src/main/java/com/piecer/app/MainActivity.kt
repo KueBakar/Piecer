@@ -55,6 +55,10 @@ import com.piecer.app.ui.screens.home.HomeScreen
 import com.piecer.app.ui.screens.home.HomeViewModel
 import com.piecer.app.ui.screens.more.MoreScreen
 import com.piecer.app.ui.screens.onboarding.OnboardingScreen
+import com.piecer.app.ui.screens.pieces.PiecesScreen
+import com.piecer.app.ui.screens.pieces.PiecesViewModel
+import com.piecer.app.ui.screens.recurring.RecurringScreen
+import com.piecer.app.ui.screens.recurring.RecurringViewModel
 import com.piecer.app.ui.screens.security.LockScreen
 import com.piecer.app.ui.screens.settings.CrashReportScreen
 import com.piecer.app.ui.screens.settings.SettingsScreen
@@ -81,6 +85,8 @@ class MainActivity : FragmentActivity() {
     private val walletsViewModel: WalletsViewModel by viewModels()
     private val budgetsViewModel: BudgetsViewModel by viewModels()
     private val goalsViewModel: GoalsViewModel by viewModels()
+    private val piecesViewModel: PiecesViewModel by viewModels()
+    private val recurringViewModel: RecurringViewModel by viewModels()
     private val settingsViewModel: SettingsViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -136,6 +142,8 @@ class MainActivity : FragmentActivity() {
                             walletsViewModel = walletsViewModel,
                             budgetsViewModel = budgetsViewModel,
                             goalsViewModel = goalsViewModel,
+                            piecesViewModel = piecesViewModel,
+                            recurringViewModel = recurringViewModel,
                             settingsViewModel = settingsViewModel,
                             onPinConfigured = mainViewModel::markSessionUnlocked,
                             openCrashReportRequest = openCrashReportRequest,
@@ -331,6 +339,8 @@ fun PiecerApp(
     walletsViewModel: WalletsViewModel,
     budgetsViewModel: BudgetsViewModel,
     goalsViewModel: GoalsViewModel,
+    piecesViewModel: PiecesViewModel,
+    recurringViewModel: RecurringViewModel,
     settingsViewModel: SettingsViewModel,
     onPinConfigured: () -> Unit,
     openCrashReportRequest: Boolean = false,
@@ -356,6 +366,8 @@ fun PiecerApp(
         currentRoute == PiecerRoutes.WALLETS ||
         currentRoute == PiecerRoutes.BUDGETS ||
         currentRoute == PiecerRoutes.GOALS ||
+        currentRoute == PiecerRoutes.PIECES ||
+        currentRoute == PiecerRoutes.RECURRING ||
         currentRoute == PiecerRoutes.SETTINGS ||
         currentRoute == PiecerRoutes.CRASH_REPORT
 
@@ -430,7 +442,8 @@ fun PiecerApp(
                     viewModel = homeViewModel,
                     onSeeAllTransactions = { navigateToTab(PiecerTab.Transactions) },
                     onEditTransaction = openEditTransaction,
-                    onOpenBudgets = { navController.navigate(PiecerRoutes.BUDGETS) }
+                    onOpenBudgets = { navController.navigate(PiecerRoutes.BUDGETS) },
+                    onOpenPieces = { navController.navigate(PiecerRoutes.PIECES) }
                 )
             }
             composable(PiecerTab.Transactions.route) {
@@ -455,10 +468,24 @@ fun PiecerApp(
             }
             composable(PiecerTab.More.route) {
                 MoreScreen(
+                    onOpenPieces = { navController.navigate(PiecerRoutes.PIECES) },
                     onOpenWallets = { navController.navigate(PiecerRoutes.WALLETS) },
                     onOpenBudgets = { navController.navigate(PiecerRoutes.BUDGETS) },
                     onOpenGoals = { navController.navigate(PiecerRoutes.GOALS) },
+                    onOpenRecurring = { navController.navigate(PiecerRoutes.RECURRING) },
                     onOpenSettings = { navController.navigate(PiecerRoutes.SETTINGS) }
+                )
+            }
+            composable(PiecerRoutes.PIECES) {
+                PiecesScreen(
+                    viewModel = piecesViewModel,
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable(PiecerRoutes.RECURRING) {
+                RecurringScreen(
+                    viewModel = recurringViewModel,
+                    onBack = { navController.popBackStack() }
                 )
             }
             composable(PiecerRoutes.WALLETS) {

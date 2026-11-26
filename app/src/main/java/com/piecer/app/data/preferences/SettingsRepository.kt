@@ -36,7 +36,8 @@ data class AppSettings(
     val reduceMotion: Boolean = false,
     val onboardingCompleted: Boolean = false,
     val failedPinAttempts: Int = 0,
-    val pinLockoutUntilMillis: Long = 0L
+    val pinLockoutUntilMillis: Long = 0L,
+    val piecesEnabled: Boolean = false
 ) {
     val isPinEnabled: Boolean get() = !pinHash.isNullOrBlank() && !pinSalt.isNullOrBlank()
 }
@@ -64,6 +65,7 @@ class SettingsRepository @Inject constructor(
         val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         val FAILED_PIN_ATTEMPTS = intPreferencesKey("failed_pin_attempts")
         val PIN_LOCKOUT_UNTIL = longPreferencesKey("pin_lockout_until")
+        val PIECES_ENABLED = booleanPreferencesKey("pieces_enabled")
     }
 
     val settingsFlow: Flow<AppSettings> = context.settingsDataStore.data.map { prefs ->
@@ -83,7 +85,8 @@ class SettingsRepository @Inject constructor(
             reduceMotion = prefs[Keys.REDUCE_MOTION] ?: false,
             onboardingCompleted = prefs[Keys.ONBOARDING_COMPLETED] ?: false,
             failedPinAttempts = prefs[Keys.FAILED_PIN_ATTEMPTS] ?: 0,
-            pinLockoutUntilMillis = prefs[Keys.PIN_LOCKOUT_UNTIL] ?: 0L
+            pinLockoutUntilMillis = prefs[Keys.PIN_LOCKOUT_UNTIL] ?: 0L,
+            piecesEnabled = prefs[Keys.PIECES_ENABLED] ?: false
         )
     }
 
@@ -144,6 +147,10 @@ class SettingsRepository @Inject constructor(
         context.settingsDataStore.edit { it[Keys.ONBOARDING_COMPLETED] = completed }
     }
 
+    suspend fun setPiecesEnabled(enabled: Boolean) {
+        context.settingsDataStore.edit { it[Keys.PIECES_ENABLED] = enabled }
+    }
+
     suspend fun updatePinAttempts(attempts: Int, lockoutUntilMillis: Long) {
         context.settingsDataStore.edit {
             it[Keys.FAILED_PIN_ATTEMPTS] = attempts
@@ -159,7 +166,8 @@ class SettingsRepository @Inject constructor(
         dailyReminderHour: Int,
         dailyReminderMinute: Int,
         blockScreenshots: Boolean,
-        reduceMotion: Boolean
+        reduceMotion: Boolean,
+        piecesEnabled: Boolean = false
     ) {
         context.settingsDataStore.edit {
             it[Keys.THEME_MODE] = themeMode.name
@@ -170,6 +178,7 @@ class SettingsRepository @Inject constructor(
             it[Keys.DAILY_REMINDER_MINUTE] = dailyReminderMinute.coerceIn(0, 59)
             it[Keys.BLOCK_SCREENSHOTS] = blockScreenshots
             it[Keys.REDUCE_MOTION] = reduceMotion
+            it[Keys.PIECES_ENABLED] = piecesEnabled
         }
     }
 }

@@ -17,6 +17,10 @@ class BackupRepository @Inject constructor(
         val transactions = database.transactionDao().getAll()
         val budgets = database.budgetDao().getAll()
         val goals = database.goalDao().getAll()
+        val pieces = database.pieceDao().getAllPieces()
+        val pieceCategories = database.pieceDao().getAllPieceCategories()
+        val pieceAllocations = database.pieceDao().getAllAllocations()
+        val recurring = database.recurringDao().getAll()
         val appSettings = settingsRepository.getSettings()
 
         return PiecerBackup(
@@ -27,6 +31,10 @@ class BackupRepository @Inject constructor(
             transactions = transactions,
             budgets = budgets,
             goals = goals,
+            pieces = pieces,
+            pieceCategories = pieceCategories,
+            pieceAllocations = pieceAllocations,
+            recurring = recurring,
             settings = BackupSettings(
                 themeMode = appSettings.themeMode,
                 cycleStartDay = appSettings.cycleStartDay,
@@ -35,13 +43,18 @@ class BackupRepository @Inject constructor(
                 dailyReminderHour = appSettings.dailyReminderHour,
                 dailyReminderMinute = appSettings.dailyReminderMinute,
                 blockScreenshots = appSettings.blockScreenshots,
-                reduceMotion = appSettings.reduceMotion
+                reduceMotion = appSettings.reduceMotion,
+                piecesEnabled = appSettings.piecesEnabled
             )
         )
     }
 
     suspend fun restoreBackup(backup: PiecerBackup) {
         database.withTransaction {
+            database.pieceDao().deleteAllAllocations()
+            database.pieceDao().deleteAllPieceCategories()
+            database.pieceDao().deleteAllPieces()
+            database.recurringDao().deleteAll()
             database.transactionDao().deleteAll()
             database.budgetDao().deleteAll()
             database.goalDao().deleteAll()
@@ -53,6 +66,10 @@ class BackupRepository @Inject constructor(
             database.transactionDao().insertAll(backup.transactions)
             database.budgetDao().insertAll(backup.budgets)
             database.goalDao().insertAll(backup.goals)
+            database.pieceDao().insertAllPieces(backup.pieces)
+            database.pieceDao().insertAllPieceCategories(backup.pieceCategories)
+            database.pieceDao().insertAllocations(backup.pieceAllocations)
+            database.recurringDao().insertAll(backup.recurring)
         }
 
         val s = backup.settings
@@ -64,7 +81,8 @@ class BackupRepository @Inject constructor(
             dailyReminderHour = s.dailyReminderHour,
             dailyReminderMinute = s.dailyReminderMinute,
             blockScreenshots = s.blockScreenshots,
-            reduceMotion = s.reduceMotion
+            reduceMotion = s.reduceMotion,
+            piecesEnabled = s.piecesEnabled
         )
     }
 }

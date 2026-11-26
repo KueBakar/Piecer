@@ -4,7 +4,10 @@ import com.piecer.app.data.local.dao.TransactionDao
 import com.piecer.app.data.local.dao.WalletDao
 import com.piecer.app.data.local.dao.WalletWithBalance
 import com.piecer.app.data.local.entity.WalletEntity
+import com.piecer.app.util.calculateWalletBalance
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -28,10 +31,24 @@ class WalletRepositoryImpl @Inject constructor(
     override fun observeById(id: Long): Flow<WalletEntity?> = walletDao.observeById(id)
 
     override fun observeWalletsWithBalance(): Flow<List<WalletWithBalance>> =
-        walletDao.observeWalletsWithBalance()
+        combine(walletDao.observeAll(), transactionDao.observeAll()) { wallets, transactions ->
+            val now = System.currentTimeMillis()
+            wallets.map { w ->
+                WalletWithBalance(
+                    walletId = w.id,
+                    name = w.name,
+                    type = w.type,
+                    initialBalance = w.initialBalance,
+                    iconKey = w.iconKey,
+                    colorKey = w.colorKey,
+                    createdAt = w.createdAt,
+                    currentBalance = calculateWalletBalance(w.id, w.initialBalance, transactions, now)
+                )
+            }
+        }
 
     override fun observeWalletWithBalance(walletId: Long): Flow<WalletWithBalance?> =
-        walletDao.observeWalletWithBalance(walletId)
+        observeWalletsWithBalance().map { list -> list.firstOrNull { it.walletId == walletId } }
 
     override suspend fun insert(wallet: WalletEntity): Long = walletDao.insert(wallet)
 

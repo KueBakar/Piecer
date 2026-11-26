@@ -33,6 +33,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -49,11 +50,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.piecer.app.R
+import com.piecer.app.data.local.entity.RecurringInterval
 import com.piecer.app.data.local.entity.TransactionType
 import com.piecer.app.ui.components.AmountText
 import com.piecer.app.ui.components.AmountTone
 import com.piecer.app.ui.components.PiecerButton
 import com.piecer.app.ui.components.PiecerChip
+import com.piecer.app.ui.components.formatRupiah
 import com.piecer.app.ui.theme.PiecerTheme
 import com.piecer.app.util.DateUtils
 import com.piecer.app.util.TransactionValidationError
@@ -122,6 +125,25 @@ fun AddTransactionScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = spacing.screenPadding)
             ) {
+                if (uiState.editingId == null) {
+                    OutlinedTextField(
+                        value = uiState.quickEntryText,
+                        onValueChange = viewModel::onQuickEntryChange,
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(text = stringResource(id = R.string.tx_quick_entry_label)) },
+                        placeholder = { Text(text = stringResource(id = R.string.tx_quick_entry_placeholder)) },
+                        singleLine = true,
+                        shape = MaterialTheme.shapes.medium,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = colorScheme.primary,
+                            unfocusedBorderColor = colorScheme.outline,
+                            focusedContainerColor = colorScheme.surface,
+                            unfocusedContainerColor = colorScheme.surface
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(spacing.md))
+                }
+
                 TransactionTypeSelector(
                     selectedType = uiState.type,
                     onTypeSelected = viewModel::onTypeChange
@@ -282,6 +304,99 @@ fun AddTransactionScreen(
                         unfocusedContainerColor = colorScheme.surface
                     )
                 )
+
+                if (uiState.type == TransactionType.INCOME && uiState.pieces.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(spacing.md))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.tx_split_to_pieces),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = colorScheme.onSurface
+                        )
+                        Switch(
+                            checked = uiState.splitToPieces,
+                            onCheckedChange = viewModel::onSplitToPiecesChange
+                        )
+                    }
+                    if (uiState.splitToPieces && uiState.pieceSplitPreview.isNotEmpty()) {
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = spacing.xs),
+                            shape = MaterialTheme.shapes.medium,
+                            color = colorScheme.surface,
+                            border = BorderStroke(spacing.borderWidth, colorScheme.outline)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(spacing.md),
+                                verticalArrangement = Arrangement.spacedBy(spacing.xxs)
+                            ) {
+                                Text(
+                                    text = stringResource(id = R.string.tx_split_preview_title),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = PiecerTheme.colors.mutedText
+                                )
+                                uiState.pieceSplitPreview.forEach { item ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = "${item.pieceName} (${item.percent}%)",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = formatRupiah(item.amount),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = PiecerTheme.colors.mint
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (uiState.editingId == null) {
+                    Spacer(modifier = Modifier.height(spacing.md))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.tx_make_recurring),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = colorScheme.onSurface
+                        )
+                        Switch(
+                            checked = uiState.makeRecurring,
+                            onCheckedChange = viewModel::onMakeRecurringChange
+                        )
+                    }
+                    if (uiState.makeRecurring) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+                            modifier = Modifier.padding(top = spacing.xs)
+                        ) {
+                            PiecerChip(
+                                label = stringResource(id = R.string.recurring_interval_monthly),
+                                selected = uiState.recurringInterval == RecurringInterval.MONTHLY,
+                                onClick = { viewModel.onRecurringIntervalSelect(RecurringInterval.MONTHLY) }
+                            )
+                            PiecerChip(
+                                label = stringResource(id = R.string.recurring_interval_weekly),
+                                selected = uiState.recurringInterval == RecurringInterval.WEEKLY,
+                                onClick = { viewModel.onRecurringIntervalSelect(RecurringInterval.WEEKLY) }
+                            )
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(spacing.md))
             }

@@ -5,6 +5,11 @@ import com.piecer.app.data.local.entity.BudgetPeriodType
 import com.piecer.app.data.local.entity.CategoryEntity
 import com.piecer.app.data.local.entity.CategoryType
 import com.piecer.app.data.local.entity.GoalEntity
+import com.piecer.app.data.local.entity.PieceAllocationEntity
+import com.piecer.app.data.local.entity.PieceCategoryEntity
+import com.piecer.app.data.local.entity.PieceEntity
+import com.piecer.app.data.local.entity.RecurringEntity
+import com.piecer.app.data.local.entity.RecurringInterval
 import com.piecer.app.data.local.entity.TransactionEntity
 import com.piecer.app.data.local.entity.TransactionType
 import com.piecer.app.data.local.entity.WalletEntity
@@ -99,6 +104,35 @@ class BackupJsonCodecTest {
                     createdAt = 1_762_000_000_000L
                 )
             ),
+            pieces = listOf(
+                PieceEntity(1L, "Kebutuhan", 50, "ink", "home", 0, 1_760_000_000_000L),
+                PieceEntity(2L, "Keinginan", 30, "amber", "shopping_bag", 1, 1_760_000_000_000L),
+                PieceEntity(3L, "Tabungan", 20, "mint", "savings", 2, 1_760_000_000_000L)
+            ),
+            pieceCategories = listOf(
+                PieceCategoryEntity(pieceId = 1L, categoryId = 1L)
+            ),
+            pieceAllocations = listOf(
+                PieceAllocationEntity(1L, 1L, 10L, 500_000L, 1_765_000_000_000L)
+            ),
+            recurring = listOf(
+                RecurringEntity(
+                    id = 1L,
+                    type = TransactionType.EXPENSE,
+                    amount = 150_000L,
+                    categoryId = 1L,
+                    walletId = 1L,
+                    toWalletId = null,
+                    note = "Internet",
+                    interval = RecurringInterval.MONTHLY,
+                    dayOfMonth = 20,
+                    dayOfWeek = null,
+                    nextDueDate = 1_770_000_000_000L,
+                    isActive = true,
+                    remindDaysBefore = 3,
+                    createdAt = 1_760_000_000_000L
+                )
+            ),
             settings = BackupSettings(
                 themeMode = ThemeMode.DARK,
                 cycleStartDay = 25,
@@ -107,7 +141,8 @@ class BackupJsonCodecTest {
                 dailyReminderHour = 21,
                 dailyReminderMinute = 30,
                 blockScreenshots = true,
-                reduceMotion = true
+                reduceMotion = true,
+                piecesEnabled = true
             )
         )
 
@@ -128,5 +163,20 @@ class BackupJsonCodecTest {
     @Test(expected = IllegalArgumentException::class)
     fun `decode rejects malformed json`() {
         BackupJsonCodec.decode("{invalid json")
+    }
+
+    @Test
+    fun `decode supports legacy v1 backup without pieces or recurring`() {
+        val v1Json = """
+            {"version":1,"exportedAt":1770000000000,"wallets":[{"id":1,"name":"Tunai","type":"CASH","initialBalance":100000,"iconKey":"wallet","colorKey":"ink","createdAt":1760000000000}],"categories":[{"id":1,"name":"Makan","type":"EXPENSE","iconKey":"restaurant","colorKey":"coral","isDefault":true}],"transactions":[],"budgets":[],"goals":[],"settings":{"themeMode":"LIGHT","cycleStartDay":1,"isBalanceHidden":false,"dailyReminderEnabled":false,"dailyReminderHour":20,"dailyReminderMinute":0,"blockScreenshots":false,"reduceMotion":false}}
+        """.trimIndent()
+        val decoded = BackupJsonCodec.decode(v1Json)
+        assertEquals(1, decoded.version)
+        assertEquals(1, decoded.wallets.size)
+        assertEquals(emptyList<PieceEntity>(), decoded.pieces)
+        assertEquals(emptyList<PieceCategoryEntity>(), decoded.pieceCategories)
+        assertEquals(emptyList<PieceAllocationEntity>(), decoded.pieceAllocations)
+        assertEquals(emptyList<RecurringEntity>(), decoded.recurring)
+        assertEquals(false, decoded.settings.piecesEnabled)
     }
 }

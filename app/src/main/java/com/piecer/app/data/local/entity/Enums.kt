@@ -17,3 +17,8 @@ enum class TransactionType {
     EXPENSE,
     TRANSFER
 }
+
+enum class RecurringInterval {
+    WEEKLY,
+    MONTHLY
+}

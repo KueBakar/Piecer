@@ -5,6 +5,11 @@ import com.piecer.app.data.local.entity.BudgetPeriodType
 import com.piecer.app.data.local.entity.CategoryEntity
 import com.piecer.app.data.local.entity.CategoryType
 import com.piecer.app.data.local.entity.GoalEntity
+import com.piecer.app.data.local.entity.PieceAllocationEntity
+import com.piecer.app.data.local.entity.PieceCategoryEntity
+import com.piecer.app.data.local.entity.PieceEntity
+import com.piecer.app.data.local.entity.RecurringEntity
+import com.piecer.app.data.local.entity.RecurringInterval
 import com.piecer.app.data.local.entity.TransactionEntity
 import com.piecer.app.data.local.entity.TransactionType
 import com.piecer.app.data.local.entity.WalletEntity
@@ -89,6 +94,62 @@ object BackupJsonCodec {
         }
         sb.append(",\n")
 
+        sb.append("  \"pieces\": ")
+        appendArray(sb, backup.pieces) { p ->
+            appendObject(
+                "id" to p.id,
+                "name" to p.name,
+                "percent" to p.percent,
+                "colorKey" to p.colorKey,
+                "iconKey" to p.iconKey,
+                "sortOrder" to p.sortOrder,
+                "createdAt" to p.createdAt
+            )
+        }
+        sb.append(",\n")
+
+        sb.append("  \"pieceCategories\": ")
+        appendArray(sb, backup.pieceCategories) { pc ->
+            appendObject(
+                "pieceId" to pc.pieceId,
+                "categoryId" to pc.categoryId
+            )
+        }
+        sb.append(",\n")
+
+        sb.append("  \"pieceAllocations\": ")
+        appendArray(sb, backup.pieceAllocations) { pa ->
+            appendObject(
+                "id" to pa.id,
+                "pieceId" to pa.pieceId,
+                "transactionId" to pa.transactionId,
+                "amount" to pa.amount,
+                "createdAt" to pa.createdAt
+            )
+        }
+        sb.append(",\n")
+
+        sb.append("  \"recurring\": ")
+        appendArray(sb, backup.recurring) { r ->
+            appendObject(
+                "id" to r.id,
+                "type" to r.type.name,
+                "amount" to r.amount,
+                "categoryId" to r.categoryId,
+                "walletId" to r.walletId,
+                "toWalletId" to r.toWalletId,
+                "note" to r.note,
+                "interval" to r.interval.name,
+                "dayOfMonth" to r.dayOfMonth,
+                "dayOfWeek" to r.dayOfWeek,
+                "nextDueDate" to r.nextDueDate,
+                "isActive" to r.isActive,
+                "remindDaysBefore" to r.remindDaysBefore,
+                "createdAt" to r.createdAt
+            )
+        }
+        sb.append(",\n")
+
         sb.append("  \"settings\": ")
         sb.appendObject(
             "themeMode" to backup.settings.themeMode.name,
@@ -98,7 +159,8 @@ object BackupJsonCodec {
             "dailyReminderHour" to backup.settings.dailyReminderHour,
             "dailyReminderMinute" to backup.settings.dailyReminderMinute,
             "blockScreenshots" to backup.settings.blockScreenshots,
-            "reduceMotion" to backup.settings.reduceMotion
+            "reduceMotion" to backup.settings.reduceMotion,
+            "piecesEnabled" to backup.settings.piecesEnabled
         )
         sb.append("\n}")
         return sb.toString()
@@ -107,7 +169,7 @@ object BackupJsonCodec {
     fun decode(json: String): PiecerBackup {
         val root = JsonParser(json).parseObject()
         val version = root.reqInt("version")
-        if (version != PiecerBackup.CURRENT_VERSION) {
+        if (version !in 1..PiecerBackup.CURRENT_VERSION) {
             throw IllegalArgumentException("Versi backup tidak didukung: $version")
         }
         val exportedAt = root.reqLong("exportedAt")
@@ -177,6 +239,58 @@ object BackupJsonCodec {
             )
         }
 
+        val pieces = root.optArray("pieces").map { elem ->
+            val obj = elem.asObj()
+            PieceEntity(
+                id = obj.reqLong("id"),
+                name = obj.reqString("name"),
+                percent = obj.reqInt("percent"),
+                colorKey = obj.reqString("colorKey"),
+                iconKey = obj.reqString("iconKey"),
+                sortOrder = obj.reqInt("sortOrder"),
+                createdAt = obj.reqLong("createdAt")
+            )
+        }
+
+        val pieceCategories = root.optArray("pieceCategories").map { elem ->
+            val obj = elem.asObj()
+            PieceCategoryEntity(
+                pieceId = obj.reqLong("pieceId"),
+                categoryId = obj.reqLong("categoryId")
+            )
+        }
+
+        val pieceAllocations = root.optArray("pieceAllocations").map { elem ->
+            val obj = elem.asObj()
+            PieceAllocationEntity(
+                id = obj.reqLong("id"),
+                pieceId = obj.reqLong("pieceId"),
+                transactionId = obj.reqLong("transactionId"),
+                amount = obj.reqLong("amount"),
+                createdAt = obj.reqLong("createdAt")
+            )
+        }
+
+        val recurring = root.optArray("recurring").map { elem ->
+            val obj = elem.asObj()
+            RecurringEntity(
+                id = obj.reqLong("id"),
+                type = TransactionType.valueOf(obj.reqString("type")),
+                amount = obj.reqLong("amount"),
+                categoryId = obj.optLong("categoryId"),
+                walletId = obj.reqLong("walletId"),
+                toWalletId = obj.optLong("toWalletId"),
+                note = obj.optString("note") ?: "",
+                interval = RecurringInterval.valueOf(obj.reqString("interval")),
+                dayOfMonth = obj.optInt("dayOfMonth"),
+                dayOfWeek = obj.optInt("dayOfWeek"),
+                nextDueDate = obj.reqLong("nextDueDate"),
+                isActive = obj.reqBoolean("isActive"),
+                remindDaysBefore = obj.reqInt("remindDaysBefore"),
+                createdAt = obj.reqLong("createdAt")
+            )
+        }
+
         val settingsObj = root.reqObj("settings")
         val settings = BackupSettings(
             themeMode = ThemeMode.valueOf(settingsObj.reqString("themeMode")),
@@ -186,7 +300,8 @@ object BackupJsonCodec {
             dailyReminderHour = settingsObj.reqInt("dailyReminderHour").coerceIn(0, 23),
             dailyReminderMinute = settingsObj.reqInt("dailyReminderMinute").coerceIn(0, 59),
             blockScreenshots = settingsObj.reqBoolean("blockScreenshots"),
-            reduceMotion = settingsObj.reqBoolean("reduceMotion")
+            reduceMotion = settingsObj.reqBoolean("reduceMotion"),
+            piecesEnabled = settingsObj.optBoolean("piecesEnabled") ?: false
         )
 
         return PiecerBackup(
@@ -197,6 +312,10 @@ object BackupJsonCodec {
             transactions = transactions,
             budgets = budgets,
             goals = goals,
+            pieces = pieces,
+            pieceCategories = pieceCategories,
+            pieceAllocations = pieceAllocations,
+            recurring = recurring,
             settings = settings
         )
     }
@@ -404,6 +523,12 @@ object BackupJsonCodec {
         return this[key] as? List<Any?> ?: throw IllegalArgumentException("Array '$key' tidak ditemukan")
     }
 
+    @Suppress("UNCHECKED_CAST")
+    private fun Map<String, Any?>.optArray(key: String): List<Any?> {
+        val v = this[key] ?: return emptyList()
+        return v as? List<Any?> ?: throw IllegalArgumentException("Array '$key' tidak valid")
+    }
+
     private fun Map<String, Any?>.reqString(key: String): String {
         return this[key] as? String ?: throw IllegalArgumentException("Field '$key' tidak valid")
     }
@@ -428,7 +553,16 @@ object BackupJsonCodec {
         return reqLong(key).toInt()
     }
 
+    private fun Map<String, Any?>.optInt(key: String): Int? {
+        return optLong(key)?.toInt()
+    }
+
     private fun Map<String, Any?>.reqBoolean(key: String): Boolean {
         return this[key] as? Boolean ?: throw IllegalArgumentException("Field '$key' harus berupa boolean")
+    }
+
+    private fun Map<String, Any?>.optBoolean(key: String): Boolean? {
+        val v = this[key] ?: return null
+        return v as? Boolean ?: throw IllegalArgumentException("Field '$key' harus berupa boolean")
     }
 }

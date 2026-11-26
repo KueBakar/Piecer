@@ -10,12 +10,18 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.piecer.app.data.local.dao.BudgetDao
 import com.piecer.app.data.local.dao.CategoryDao
 import com.piecer.app.data.local.dao.GoalDao
+import com.piecer.app.data.local.dao.PieceDao
+import com.piecer.app.data.local.dao.RecurringDao
 import com.piecer.app.data.local.dao.TransactionDao
 import com.piecer.app.data.local.dao.WalletDao
 import com.piecer.app.data.local.entity.BudgetEntity
 import com.piecer.app.data.local.entity.CategoryEntity
 import com.piecer.app.data.local.entity.CategoryType
 import com.piecer.app.data.local.entity.GoalEntity
+import com.piecer.app.data.local.entity.PieceAllocationEntity
+import com.piecer.app.data.local.entity.PieceCategoryEntity
+import com.piecer.app.data.local.entity.PieceEntity
+import com.piecer.app.data.local.entity.RecurringEntity
 import com.piecer.app.data.local.entity.TransactionEntity
 import com.piecer.app.data.local.entity.WalletEntity
 import com.piecer.app.data.local.entity.WalletType
@@ -26,9 +32,13 @@ import com.piecer.app.data.local.entity.WalletType
         CategoryEntity::class,
         TransactionEntity::class,
         BudgetEntity::class,
-        GoalEntity::class
+        GoalEntity::class,
+        PieceEntity::class,
+        PieceCategoryEntity::class,
+        PieceAllocationEntity::class,
+        RecurringEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -38,6 +48,8 @@ abstract class PiecerDatabase : RoomDatabase() {
     abstract fun transactionDao(): TransactionDao
     abstract fun budgetDao(): BudgetDao
     abstract fun goalDao(): GoalDao
+    abstract fun pieceDao(): PieceDao
+    abstract fun recurringDao(): RecurringDao
 
     companion object {
         const val DATABASE_NAME = "piecer.db"
@@ -77,6 +89,95 @@ abstract class PiecerDatabase : RoomDatabase() {
                         `createdAt` INTEGER NOT NULL
                     )
                     """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_3_4: Migration = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `pieces` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `name` TEXT NOT NULL,
+                        `percent` INTEGER NOT NULL,
+                        `colorKey` TEXT NOT NULL,
+                        `iconKey` TEXT NOT NULL,
+                        `sortOrder` INTEGER NOT NULL,
+                        `createdAt` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `piece_categories` (
+                        `pieceId` INTEGER NOT NULL,
+                        `categoryId` INTEGER NOT NULL,
+                        PRIMARY KEY(`pieceId`, `categoryId`),
+                        FOREIGN KEY(`pieceId`) REFERENCES `pieces`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE,
+                        FOREIGN KEY(`categoryId`) REFERENCES `categories`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_piece_categories_pieceId` ON `piece_categories` (`pieceId`)"
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_piece_categories_categoryId` ON `piece_categories` (`categoryId`)"
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `piece_allocations` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `pieceId` INTEGER NOT NULL,
+                        `transactionId` INTEGER NOT NULL,
+                        `amount` INTEGER NOT NULL,
+                        `createdAt` INTEGER NOT NULL,
+                        FOREIGN KEY(`pieceId`) REFERENCES `pieces`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE,
+                        FOREIGN KEY(`transactionId`) REFERENCES `transactions`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_piece_allocations_pieceId` ON `piece_allocations` (`pieceId`)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_piece_allocations_transactionId` ON `piece_allocations` (`transactionId`)"
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `recurring` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `type` TEXT NOT NULL,
+                        `amount` INTEGER NOT NULL,
+                        `categoryId` INTEGER,
+                        `walletId` INTEGER NOT NULL,
+                        `toWalletId` INTEGER,
+                        `note` TEXT NOT NULL,
+                        `interval` TEXT NOT NULL,
+                        `dayOfMonth` INTEGER,
+                        `dayOfWeek` INTEGER,
+                        `nextDueDate` INTEGER NOT NULL,
+                        `isActive` INTEGER NOT NULL,
+                        `remindDaysBefore` INTEGER NOT NULL,
+                        `createdAt` INTEGER NOT NULL,
+                        FOREIGN KEY(`categoryId`) REFERENCES `categories`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL,
+                        FOREIGN KEY(`walletId`) REFERENCES `wallets`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE,
+                        FOREIGN KEY(`toWalletId`) REFERENCES `wallets`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_recurring_categoryId` ON `recurring` (`categoryId`)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_recurring_walletId` ON `recurring` (`walletId`)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_recurring_toWalletId` ON `recurring` (`toWalletId`)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_recurring_nextDueDate` ON `recurring` (`nextDueDate`)"
                 )
             }
         }

@@ -29,7 +29,8 @@ import com.piecer.app.ui.theme.PiecerTheme
 data class TransactionDisplayItem(
     val transaction: TransactionEntity,
     val title: String,
-    val subtitle: String
+    val subtitle: String,
+    val isScheduled: Boolean = false
 )
 
 @Composable
@@ -67,13 +68,32 @@ fun TransactionRowItem(
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                Text(
-                    text = item.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = colors.onCardLight,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(spacing.xs)
+                ) {
+                    Text(
+                        text = item.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = colors.onCardLight,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    if (item.isScheduled) {
+                        Surface(
+                            shape = MaterialTheme.shapes.small,
+                            color = colors.amber.copy(alpha = 0.18f)
+                        ) {
+                            Text(
+                                text = stringResource(id = R.string.tx_scheduled_badge),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = colors.amber,
+                                modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.xxs)
+                            )
+                        }
+                    }
+                }
                 if (item.subtitle.isNotBlank()) {
                     Text(
                         text = item.subtitle,

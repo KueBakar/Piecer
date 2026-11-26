@@ -8,6 +8,7 @@ import com.piecer.app.data.preferences.SettingsRepository
 import com.piecer.app.util.AppLockPolicy
 import com.piecer.app.util.BreadcrumbLog
 import com.piecer.app.util.PinHasher
+import com.piecer.app.util.RecurringProcessor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -20,7 +21,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val recurringProcessor: RecurringProcessor
 ) : ViewModel() {
 
     val settings: StateFlow<AppSettings> = settingsRepository.settingsFlow.stateIn(
@@ -57,6 +59,7 @@ class MainViewModel @Inject constructor(
                 }
             }
             _isAppReady.value = true
+            runCatching { recurringProcessor.processDueAndNotify() }
         }
     }
 

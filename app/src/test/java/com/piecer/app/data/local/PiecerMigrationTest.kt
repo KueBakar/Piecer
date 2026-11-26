@@ -71,4 +71,32 @@ class PiecerMigrationTest {
         assertTrue(createTableSql.contains("`colorKey` TEXT NOT NULL"))
         assertTrue(createTableSql.contains("`createdAt` INTEGER NOT NULL"))
     }
+
+    @Test
+    fun `migration 3 to 4 has correct version range and executes pieces and recurring DDL`() {
+        val migration = PiecerDatabase.MIGRATION_3_4
+        assertEquals(3, migration.startVersion)
+        assertEquals(4, migration.endVersion)
+
+        val executedSql = mutableListOf<String>()
+        val dbProxy = Proxy.newProxyInstance(
+            SupportSQLiteDatabase::class.java.classLoader,
+            arrayOf(SupportSQLiteDatabase::class.java)
+        ) { _, method, args ->
+            if (method.name == "execSQL" && args != null && args.isNotEmpty()) {
+                executedSql.add(args[0] as String)
+            }
+            null
+        } as SupportSQLiteDatabase
+
+        migration.migrate(dbProxy)
+
+        assertEquals(12, executedSql.size)
+        assertTrue(executedSql.any { it.contains("CREATE TABLE IF NOT EXISTS `pieces`") })
+        assertTrue(executedSql.any { it.contains("CREATE TABLE IF NOT EXISTS `piece_categories`") })
+        assertTrue(executedSql.any { it.contains("CREATE UNIQUE INDEX IF NOT EXISTS `index_piece_categories_categoryId`") })
+        assertTrue(executedSql.any { it.contains("CREATE TABLE IF NOT EXISTS `piece_allocations`") })
+        assertTrue(executedSql.any { it.contains("CREATE TABLE IF NOT EXISTS `recurring`") })
+        assertTrue(executedSql.any { it.contains("CREATE INDEX IF NOT EXISTS `index_recurring_nextDueDate`") })
+    }
 }

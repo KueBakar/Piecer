@@ -2,17 +2,23 @@ package com.piecer.app.util
 
 import com.piecer.app.data.local.entity.TransactionEntity
 import com.piecer.app.data.local.entity.TransactionType
+import java.time.ZoneId
 
 /**
  * Menghitung saldo dompet: initialBalance + pemasukan - pengeluaran +/- transfer.
+ * Transaksi terjadwal (tanggal setelah hari ini) tidak dihitung.
  */
 fun calculateWalletBalance(
     walletId: Long,
     initialBalance: Long,
-    transactions: List<TransactionEntity>
+    transactions: List<TransactionEntity>,
+    nowMillis: Long = System.currentTimeMillis(),
+    zoneId: ZoneId = ZoneId.systemDefault()
 ): Long {
+    val cutoff = DateUtils.endOfTodayMillis(nowMillis, zoneId)
     var balance = initialBalance
     for (tx in transactions) {
+        if (tx.date > cutoff) continue
         when (tx.type) {
             TransactionType.INCOME -> {
                 if (tx.walletId == walletId) {

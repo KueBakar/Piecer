@@ -2,11 +2,15 @@ package com.piecer.app.ui.screens.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.piecer.app.data.local.entity.PieceAllocationEntity
+import com.piecer.app.data.local.entity.PieceCategoryEntity
+import com.piecer.app.data.local.entity.PieceEntity
 import com.piecer.app.data.local.entity.TransactionEntity
 import com.piecer.app.data.local.entity.TransactionType
 import com.piecer.app.data.preferences.SettingsRepository
 import com.piecer.app.data.repository.BudgetRepository
 import com.piecer.app.data.repository.CategoryRepository
+import com.piecer.app.data.repository.PieceRepository
 import com.piecer.app.data.repository.TransactionRepository
 import com.piecer.app.data.repository.WalletRepository
 import com.piecer.app.ui.components.TransactionDisplayItem
@@ -15,6 +19,10 @@ import com.piecer.app.util.BudgetProgress
 import com.piecer.app.util.DailyExpensePoint
 import com.piecer.app.util.DateUtils
 import com.piecer.app.util.FinancialCycleHelper
+import com.piecer.app.util.HomeInsight
+import com.piecer.app.util.InsightEngine
+import com.piecer.app.util.PieceBalanceSummary
+import com.piecer.app.util.PieceCalculator
 import com.piecer.app.util.calculateBolehJajanHariIni
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -53,7 +61,12 @@ data class HomeUiState(
     val criticalBudget: HomeCriticalBudget? = null,
     val weeklyExpenses: List<DailyExpensePoint> = emptyList(),
     val recentTransactions: List<TransactionDisplayItem> = emptyList(),
-    val hasAnyTransaction: Boolean = false
+    val upcomingTransactions: List<TransactionDisplayItem> = emptyList(),
+    val hasAnyTransaction: Boolean = false,
+    val piecesEnabled: Boolean = false,
+    val pieceSummaries: List<PieceBalanceSummary> = emptyList(),
+    val lowestPieces: List<PieceBalanceSummary> = emptyList(),
+    val insights: List<HomeInsight> = emptyList()
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -63,6 +76,7 @@ class HomeViewModel @Inject constructor(
     transactionRepository: TransactionRepository,
     categoryRepository: CategoryRepository,
     budgetRepository: BudgetRepository,
+    pieceRepository: PieceRepository,
     private val settingsRepository: SettingsRepository
 ) : ViewModel() {
 
@@ -71,8 +85,18 @@ class HomeViewModel @Inject constructor(
         .distinctUntilChanged()
 
     private val monthlySummaryFlow = cycleStartDayFlow.flatMapLatest { startDay ->
-        val period = FinancialCycleHelper.currentPeriod(cycleStartDay = startDay)
-        transactionRepository.observePeriodSummary(period.startMillis, period.endMillis)
+        val now = System.currentTimeMillis()
+        val period = FinancialCycleHelper.currentPeriod(nowMillis = now, cycleStartDay = startDay)
+        val effectiveEnd = minOf(period.endMillis, DateUtils.endOfTodayMillis(now))
+        transactionRepository.observePeriodSummary(period.startMillis, effectiveEnd)
+    }
+
+    private val piecesDataFlow = combine(
+        pieceRepository.observeAllPieces(),
+        pieceRepository.observeAllPieceCategories(),
+        pieceRepository.observeAllAllocations()
+    ) { pieces, pieceCats, allocations ->
+        Triple(pieces, pieceCats, allocations)
     }
 
     private val baseDataFlow = combine(
@@ -81,7 +105,8 @@ class HomeViewModel @Inject constructor(
         transactionRepository.observeAll(),
         categoryRepository.observeAll(),
         budgetRepository.observeAll(),
-        cycleStartDayFlow
+        cycleStartDayFlow,
+        piecesDataFlow
     ) { values ->
         @Suppress("UNCHECKED_CAST")
         val walletsWithBalance = values[0] as List<com.piecer.app.data.local.dao.WalletWithBalance>
@@ -93,8 +118,15 @@ class HomeViewModel @Inject constructor(
         @Suppress("UNCHECKED_CAST")
         val budgets = values[4] as List<com.piecer.app.data.local.entity.BudgetEntity>
         val cycleStartDay = values[5] as Int
+        @Suppress("UNCHECKED_CAST")
+        val piecesTuple = values[6] as Triple<List<PieceEntity>, List<PieceCategoryEntity>, List<PieceAllocationEntity>>
+        val (pieces, pieceCats, allocations) = piecesTuple
 
         val currentNow = System.currentTimeMillis()
+        val effectiveTxs = DateUtils.effectiveTransactions(allTransactions, currentNow)
+        val upcomingTxs = DateUtils.scheduledTransactions(allTransactions, currentNow)
+            .sortedBy { it.date }
+
         val totalBalance = walletsWithBalance.sumOf { it.currentBalance }
         val cyclePeriod = FinancialCycleHelper.currentPeriod(
             nowMillis = currentNow,
@@ -114,8 +146,8 @@ class HomeViewModel @Inject constructor(
         val walletNames = walletsWithBalance.associate { it.walletId to it.name }
 
         val currentMonthStart = cyclePeriod.startMillis
-        val currentMonthEnd = cyclePeriod.endMillis
-        val spentByCategory = allTransactions
+        val currentMonthEnd = minOf(cyclePeriod.endMillis, DateUtils.endOfTodayMillis(currentNow))
+        val spentByCategory = effectiveTxs
             .asSequence()
             .filter {
                 it.type == TransactionType.EXPENSE &&
@@ -135,11 +167,35 @@ class HomeViewModel @Inject constructor(
         }
         val criticalBudget = BudgetCalculator.findMostCritical(budgetSummaries) { it.progress }
 
-        val recentItems = allTransactions.take(5).map { tx ->
-            toDisplayItem(tx, categoryNames, walletNames)
+        val recentItems = effectiveTxs.take(5).map { tx ->
+            toDisplayItem(tx, categoryNames, walletNames, isScheduled = false)
+        }
+        val upcomingItems = upcomingTxs.take(3).map { tx ->
+            toDisplayItem(tx, categoryNames, walletNames, isScheduled = true)
         }
 
-        val weeklyExpenses = DateUtils.last7DaysExpenses(allTransactions, currentNow)
+        val weeklyExpenses = DateUtils.last7DaysExpenses(effectiveTxs, currentNow)
+
+        val piecesOverview = PieceCalculator.calculatePiecesOverview(
+            pieces = pieces,
+            pieceCategories = pieceCats,
+            allocations = allocations,
+            transactions = effectiveTxs,
+            cyclePeriod = cyclePeriod,
+            nowMillis = currentNow
+        )
+        val lowestPieces = piecesOverview.summaries
+            .sortedBy { it.remaining }
+            .take(2)
+
+        val insights = InsightEngine.generateInsights(
+            transactions = effectiveTxs,
+            categories = categories,
+            budgets = budgets,
+            currentBalance = totalBalance,
+            cycleStartDay = cycleStartDay,
+            nowMillis = currentNow
+        )
 
         HomeUiState(
             greetingPeriod = resolveGreetingPeriod(currentNow),
@@ -152,15 +208,20 @@ class HomeViewModel @Inject constructor(
             criticalBudget = criticalBudget,
             weeklyExpenses = weeklyExpenses,
             recentTransactions = recentItems,
-            hasAnyTransaction = allTransactions.isNotEmpty()
+            upcomingTransactions = upcomingItems,
+            hasAnyTransaction = effectiveTxs.isNotEmpty(),
+            piecesEnabled = false,
+            pieceSummaries = piecesOverview.summaries,
+            lowestPieces = lowestPieces,
+            insights = insights
         )
     }
 
     val uiState: StateFlow<HomeUiState> = combine(
         baseDataFlow,
-        settingsRepository.settingsFlow.map { it.isBalanceHidden }.distinctUntilChanged()
-    ) { state, hidden ->
-        state.copy(isBalanceHidden = hidden)
+        settingsRepository.settingsFlow.map { it.isBalanceHidden to it.piecesEnabled }.distinctUntilChanged()
+    ) { state, (hidden, piecesEnabled) ->
+        state.copy(isBalanceHidden = hidden, piecesEnabled = piecesEnabled)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000L),
@@ -189,7 +250,8 @@ class HomeViewModel @Inject constructor(
     private fun toDisplayItem(
         tx: TransactionEntity,
         categoryNames: Map<Long, String>,
-        walletNames: Map<Long, String>
+        walletNames: Map<Long, String>,
+        isScheduled: Boolean = false
     ): TransactionDisplayItem {
         val walletName = walletNames[tx.walletId].orEmpty()
         val dateText = DateUtils.formatDate(tx.date)
@@ -205,7 +267,8 @@ class HomeViewModel @Inject constructor(
                 TransactionDisplayItem(
                     transaction = tx,
                     title = "Transfer",
-                    subtitle = subtitle
+                    subtitle = subtitle,
+                    isScheduled = isScheduled
                 )
             }
             TransactionType.INCOME, TransactionType.EXPENSE -> {
@@ -214,7 +277,8 @@ class HomeViewModel @Inject constructor(
                 TransactionDisplayItem(
                     transaction = tx,
                     title = categoryName,
-                    subtitle = subtitle
+                    subtitle = subtitle,
+                    isScheduled = isScheduled
                 )
             }
         }

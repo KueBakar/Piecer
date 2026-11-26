@@ -296,4 +296,79 @@
     <string name="onboarding_slide2_desc">Catat pemasukan, pengeluaran, dan transfer antar dompet dalam hitungan detik.</string>
     <string name="onboarding_slide3_title">Privasi 100% Terjaga</string>
     <string name="onboarding_slide3_desc">Datamu tinggal di HP-mu. Tanpa akun, tanpa iklan, dan tanpa server.</string>
+
+    <!-- Bagian 1: Pieces (Kantong) -->
+    <string name="more_pieces_title">Pieces (Kantong)</string>
+    <string name="more_pieces_desc">Bagi pemasukan ke kantong kebutuhan, keinginan, &amp; tabungan</string>
+    <string name="pieces_title">Pieces</string>
+    <string name="pieces_toggle_title">Aktifkan Pieces</string>
+    <string name="pieces_toggle_desc">Otomatis tawarkan pembagian saat mencatat pemasukan</string>
+    <string name="pieces_add">Tambah Piece</string>
+    <string name="pieces_edit">Ubah Piece</string>
+    <string name="pieces_edit_percents">Atur Persen</string>
+    <string name="pieces_total_remaining">Sisa Semua Pieces</string>
+    <string name="pieces_allocated_summary">Total alokasi siklus ini: %1$s</string>
+    <string name="pieces_spent_of_allocated">%1$s / %2$s</string>
+    <string name="pieces_manage_categories">Atur kategori</string>
+    <string name="pieces_categories_for">Kategori untuk %1$s</string>
+    <string name="pieces_unassigned_title">Tanpa piece</string>
+    <string name="pieces_unassigned_desc">Pengeluaran dari kategori yang belum masuk piece</string>
+    <string name="pieces_setup_title">Pilih Template Pieces</string>
+    <string name="pieces_setup_desc">Mulai cepat dengan pembagian standar atau atur sendiri.</string>
+    <string name="pieces_template_503020_title">50 / 30 / 20</string>
+    <string name="pieces_template_503020_desc">50%% Kebutuhan • 30%% Keinginan • 20%% Tabungan</string>
+    <string name="pieces_template_702010_title">70 / 20 / 10</string>
+    <string name="pieces_template_702010_desc">70%% Kebutuhan • 20%% Tabungan • 10%% Keinginan</string>
+    <string name="pieces_template_custom_title">Kustom</string>
+    <string name="pieces_template_custom_desc">Mulai dengan 2 piece dasar lalu sesuaikan sendiri</string>
+    <string name="pieces_reset_template">Gunakan Template 50/30/20</string>
+    <string name="pieces_name_label">Nama Piece</string>
+    <string name="pieces_percent_label">Persentase (0-100)</string>
+    <string name="pieces_total_percent_label">Total saat ini: %1$d%% (wajib 100%%)</string>
+    <string name="pieces_percent_invalid_banner">Total persen saat ini %1$d%%. Harus tepat 100%% agar pembagian akurat.</string>
+    <string name="pieces_error_name">Nama piece tidak boleh kosong</string>
+    <string name="pieces_error_percent">Persen harus angka 0 sampai 100</string>
+    <string name="pieces_error_total_100">Total persen semua piece harus tepat 100%% (saat ini %1$d%%)</string>
+    <string name="pieces_delete_title">Hapus %1$s?</string>
+    <string name="pieces_delete_message">Piece ini akan dihapus. Sesuaikan kembali total persen agar tetap 100%%.</string>
+    <string name="home_pieces_title">Pieces</string>
+    <string name="home_pieces_remaining">Sisa %1$s</string>
+    <string name="tx_split_to_pieces">Bagi ke Pieces</string>
+    <string name="tx_split_preview_title">Pratinjau pembagian:</string>
+
+    <!-- Bagian 2: Ketik Cepat -->
+    <string name="tx_quick_entry_label">Ketik cepat</string>
+    <string name="tx_quick_entry_placeholder">Contoh: makan siang 25rb gopay</string>
+
+    <!-- Bagian 3: Tagihan & Berulang -->
+    <string name="more_recurring_title">Tagihan &amp; Berulang</string>
+    <string name="more_recurring_desc">Otomatiskan pemasukan, tagihan, dan langganan rutin</string>
+    <string name="recurring_title">Tagihan &amp; Berulang</string>
+    <string name="recurring_add">Tambah Jadwal</string>
+    <string name="recurring_edit">Ubah Jadwal</string>
+    <string name="recurring_empty_title">Belum ada jadwal berulang</string>
+    <string name="recurring_empty_desc">Tambahkan tagihan bulanan, gaji, atau langganan agar tercatat otomatis.</string>
+    <string name="recurring_interval_monthly">Bulanan</string>
+    <string name="recurring_interval_weekly">Mingguan</string>
+    <string name="recurring_next_due_label">Jatuh tempo berikutnya: %1$s</string>
+    <string name="recurring_amount_label">Nominal</string>
+    <string name="recurring_note_label">Nama / Catatan</string>
+    <string name="recurring_remind_label">Pengingat</string>
+    <string name="recurring_remind_off">Mati</string>
+    <string name="recurring_delete_title">Hapus jadwal ini?</string>
+    <string name="recurring_delete_message">Jadwal transaksi berulang ini akan dihapus. Transaksi yang sudah tercatat tetap aman.</string>
+    <string name="recurring_suggestion_title">Langganan terdeteksi</string>
+    <string name="recurring_suggestion_action">Jadikan transaksi berulang?</string>
+    <string name="recurring_notif_channel_name">Pengingat Tagihan</string>
+    <string name="recurring_notif_channel_desc">Pengingat sebelum tagihan atau transaksi berulang jatuh tempo</string>
+    <string name="recurring_notif_title">Pengingat Tagihan</string>
+    <string name="recurring_default_label">Tagihan berulang</string>
+    <string name="recurring_due_today">jatuh tempo hari ini</string>
+    <string name="recurring_due_in_days">dalam %1$d hari</string>
+    <string name="tx_make_recurring">Jadikan berulang</string>
+
+    <!-- Bagian 4 & 5: Insight & Terjadwal -->
+    <string name="home_insights_title">Insight</string>
+    <string name="home_upcoming_title">Akan datang</string>
+    <string name="tx_scheduled_badge">Terjadwal</string>
 </resources>

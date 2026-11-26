@@ -34,6 +34,38 @@ object DateUtils {
         return localDate.atStartOfDay(zoneId).toInstant().toEpochMilli()
     }
 
+    fun endOfTodayMillis(
+        nowMillis: Long = System.currentTimeMillis(),
+        zoneId: ZoneId = ZoneId.systemDefault()
+    ): Long {
+        val today = Instant.ofEpochMilli(nowMillis).atZone(zoneId).toLocalDate()
+        return today.plusDays(1).atStartOfDay(zoneId).toInstant().toEpochMilli() - 1L
+    }
+
+    fun isScheduledTransaction(
+        txDateMillis: Long,
+        nowMillis: Long = System.currentTimeMillis(),
+        zoneId: ZoneId = ZoneId.systemDefault()
+    ): Boolean = txDateMillis > endOfTodayMillis(nowMillis, zoneId)
+
+    fun effectiveTransactions(
+        transactions: List<TransactionEntity>,
+        nowMillis: Long = System.currentTimeMillis(),
+        zoneId: ZoneId = ZoneId.systemDefault()
+    ): List<TransactionEntity> {
+        val cutoff = endOfTodayMillis(nowMillis, zoneId)
+        return transactions.filter { it.date <= cutoff }
+    }
+
+    fun scheduledTransactions(
+        transactions: List<TransactionEntity>,
+        nowMillis: Long = System.currentTimeMillis(),
+        zoneId: ZoneId = ZoneId.systemDefault()
+    ): List<TransactionEntity> {
+        val cutoff = endOfTodayMillis(nowMillis, zoneId)
+        return transactions.filter { it.date > cutoff }
+    }
+
     fun startOfMonthMillis(
         epochMillis: Long,
         zoneId: ZoneId = ZoneId.systemDefault()

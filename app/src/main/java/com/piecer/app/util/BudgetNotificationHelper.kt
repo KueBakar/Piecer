@@ -40,8 +40,9 @@ class BudgetNotificationHelper @Inject constructor(
 
         val cycleStartDay = settingsRepository.getSettings().cycleStartDay
         val period = FinancialCycleHelper.currentPeriod(nowMillis, cycleStartDay)
+        val effectiveEnd = minOf(period.endMillis, DateUtils.endOfTodayMillis(nowMillis))
         val categoryTotals = transactionRepository
-            .observeTotalByCategory(TransactionType.EXPENSE, period.startMillis, period.endMillis)
+            .observeTotalByCategory(TransactionType.EXPENSE, period.startMillis, effectiveEnd)
             .first()
             .associate { it.categoryId to it.totalAmount }
 

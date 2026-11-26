@@ -17,7 +17,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
+import androidx.compose.material.icons.rounded.DonutLarge
 import androidx.compose.material.icons.rounded.PieChart
+import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.Savings
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Icon
@@ -36,9 +38,11 @@ import com.piecer.app.ui.theme.PiecerTheme
 
 @Composable
 fun MoreScreen(
+    onOpenPieces: () -> Unit,
     onOpenWallets: () -> Unit,
     onOpenBudgets: () -> Unit,
     onOpenGoals: () -> Unit,
+    onOpenRecurring: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -58,6 +62,15 @@ fun MoreScreen(
                 text = stringResource(id = R.string.nav_more),
                 style = MaterialTheme.typography.headlineMedium,
                 color = colorScheme.onBackground
+            )
+        }
+
+        item {
+            MoreMenuCard(
+                icon = Icons.Rounded.DonutLarge,
+                title = stringResource(id = R.string.more_pieces_title),
+                subtitle = stringResource(id = R.string.more_pieces_desc),
+                onClick = onOpenPieces
             )
         }
 
@@ -85,6 +98,15 @@ fun MoreScreen(
                 title = stringResource(id = R.string.more_goals_title),
                 subtitle = stringResource(id = R.string.more_goals_desc),
                 onClick = onOpenGoals
+            )
+        }
+
+        item {
+            MoreMenuCard(
+                icon = Icons.Rounded.Repeat,
+                title = stringResource(id = R.string.more_recurring_title),
+                subtitle = stringResource(id = R.string.more_recurring_desc),
+                onClick = onOpenRecurring
             )
         }
 

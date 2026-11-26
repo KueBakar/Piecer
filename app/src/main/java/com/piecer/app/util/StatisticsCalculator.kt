@@ -94,13 +94,17 @@ object StatisticsCalculator {
     fun computeSummaryComparison(
         transactions: List<TransactionEntity>,
         currentRange: PeriodRange,
-        previousRange: PeriodRange
+        previousRange: PeriodRange,
+        nowMillis: Long = System.currentTimeMillis(),
+        zoneId: ZoneId = ZoneId.systemDefault()
     ): PeriodSummaryComparison {
+        val cutoff = DateUtils.endOfTodayMillis(nowMillis, zoneId)
         var currentIncome = 0L
         var currentExpense = 0L
         var previousExpense = 0L
 
         for (tx in transactions) {
+            if (tx.date > cutoff) continue
             if (tx.date in currentRange.startMillis..currentRange.endMillis) {
                 when (tx.type) {
                     TransactionType.INCOME -> currentIncome += tx.amount
@@ -134,13 +138,16 @@ object StatisticsCalculator {
         categories: Map<Long, CategoryEntity>,
         startMillis: Long,
         endMillis: Long,
-        uncategorizedLabel: String = "Tanpa kategori"
+        uncategorizedLabel: String = "Tanpa kategori",
+        nowMillis: Long = System.currentTimeMillis(),
+        zoneId: ZoneId = ZoneId.systemDefault()
     ): List<CategoryExpenseSlice> {
+        val cutoff = DateUtils.endOfTodayMillis(nowMillis, zoneId)
         val totalsByCategory = HashMap<Long, Long>()
         var grandTotal = 0L
 
         for (tx in transactions) {
-            if (tx.type == TransactionType.EXPENSE && tx.date in startMillis..endMillis) {
+            if (tx.type == TransactionType.EXPENSE && tx.date <= cutoff && tx.date in startMillis..endMillis) {
                 val catId = tx.categoryId ?: -1L
                 totalsByCategory[catId] = (totalsByCategory[catId] ?: 0L) + tx.amount
                 grandTotal += tx.amount
@@ -172,15 +179,17 @@ object StatisticsCalculator {
         periodType: StatsPeriodType,
         startMillis: Long,
         endMillis: Long,
-        zoneId: ZoneId = ZoneId.systemDefault()
+        zoneId: ZoneId = ZoneId.systemDefault(),
+        nowMillis: Long = System.currentTimeMillis()
     ): List<TrendPoint> {
+        val cutoff = DateUtils.endOfTodayMillis(nowMillis, zoneId)
         val startDate = Instant.ofEpochMilli(startMillis).atZone(zoneId).toLocalDate()
 
         return when (periodType) {
             StatsPeriodType.WEEK -> {
                 val totalsByDate = HashMap<LocalDate, Long>()
                 for (tx in transactions) {
-                    if (tx.type == TransactionType.EXPENSE && tx.date in startMillis..endMillis) {
+                    if (tx.type == TransactionType.EXPENSE && tx.date <= cutoff && tx.date in startMillis..endMillis) {
                         val d = Instant.ofEpochMilli(tx.date).atZone(zoneId).toLocalDate()
                         totalsByDate[d] = (totalsByDate[d] ?: 0L) + tx.amount
                     }
@@ -196,7 +205,7 @@ object StatisticsCalculator {
             StatsPeriodType.MONTH -> {
                 val totalsByDay = HashMap<Int, Long>()
                 for (tx in transactions) {
-                    if (tx.type == TransactionType.EXPENSE && tx.date in startMillis..endMillis) {
+                    if (tx.type == TransactionType.EXPENSE && tx.date <= cutoff && tx.date in startMillis..endMillis) {
                         val d = Instant.ofEpochMilli(tx.date).atZone(zoneId).toLocalDate()
                         totalsByDay[d.dayOfMonth] = (totalsByDay[d.dayOfMonth] ?: 0L) + tx.amount
                     }
@@ -212,7 +221,7 @@ object StatisticsCalculator {
             StatsPeriodType.YEAR -> {
                 val totalsByMonth = HashMap<Int, Long>()
                 for (tx in transactions) {
-                    if (tx.type == TransactionType.EXPENSE && tx.date in startMillis..endMillis) {
+                    if (tx.type == TransactionType.EXPENSE && tx.date <= cutoff && tx.date in startMillis..endMillis) {
                         val d = Instant.ofEpochMilli(tx.date).atZone(zoneId).toLocalDate()
                         totalsByMonth[d.monthValue] = (totalsByMonth[d.monthValue] ?: 0L) + tx.amount
                     }

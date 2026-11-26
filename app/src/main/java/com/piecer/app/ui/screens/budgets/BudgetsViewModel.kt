@@ -14,6 +14,7 @@ import com.piecer.app.data.repository.TransactionRepository
 import com.piecer.app.util.BudgetCalculator
 import com.piecer.app.util.BudgetNotificationHelper
 import com.piecer.app.util.BudgetProgress
+import com.piecer.app.util.DateUtils
 import com.piecer.app.util.FinancialCycleHelper
 import com.piecer.app.util.parseRupiahInput
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -76,11 +77,13 @@ class BudgetsViewModel @Inject constructor(
         .map { it.cycleStartDay }
         .distinctUntilChanged()
         .flatMapLatest { startDay ->
-            val period = FinancialCycleHelper.currentPeriod(cycleStartDay = startDay)
+            val now = System.currentTimeMillis()
+            val period = FinancialCycleHelper.currentPeriod(nowMillis = now, cycleStartDay = startDay)
+            val effectiveEnd = minOf(period.endMillis, DateUtils.endOfTodayMillis(now))
             transactionRepository.observeTotalByCategory(
                 TransactionType.EXPENSE,
                 period.startMillis,
-                period.endMillis
+                effectiveEnd
             )
         }
 

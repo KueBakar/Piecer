@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
@@ -40,6 +42,7 @@ import com.piecer.app.ui.components.PiecerIconButton
 import com.piecer.app.ui.components.ProgressBarPiece
 import com.piecer.app.ui.components.TransactionRowItem
 import com.piecer.app.ui.components.formatRupiah
+import com.piecer.app.ui.screens.pieces.PiecesSegmentedDonut
 import com.piecer.app.ui.theme.PiecerTheme
 import com.piecer.app.util.BudgetStatus
 import com.piecer.app.util.DailyExpensePoint
@@ -50,6 +53,7 @@ fun HomeScreen(
     onSeeAllTransactions: () -> Unit,
     onEditTransaction: (Long) -> Unit,
     onOpenBudgets: () -> Unit,
+    onOpenPieces: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -178,6 +182,90 @@ fun HomeScreen(
             }
         }
 
+        if (uiState.piecesEnabled && uiState.pieceSummaries.isNotEmpty()) {
+            item {
+                PiecerCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    variant = PiecerCardVariant.Light,
+                    onClick = onOpenPieces
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(spacing.md)
+                    ) {
+                        PiecesSegmentedDonut(
+                            summaries = uiState.pieceSummaries,
+                            size = 64.dp,
+                            strokeWidth = 10.dp
+                        )
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(spacing.xs)
+                        ) {
+                            Text(
+                                text = stringResource(id = R.string.home_pieces_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = colors.onCardLight
+                            )
+                            uiState.lowestPieces.forEach { summary ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = summary.piece.name,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = colors.mutedText
+                                    )
+                                    AmountText(
+                                        amount = summary.remaining,
+                                        isHidden = uiState.isBalanceHidden,
+                                        tone = if (summary.remaining >= 0L) AmountTone.Income else AmountTone.Expense,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (uiState.insights.isNotEmpty()) {
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                    Text(
+                        text = stringResource(id = R.string.home_insights_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = colorScheme.onBackground
+                    )
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(spacing.sm)
+                    ) {
+                        items(uiState.insights) { insight ->
+                            PiecerCard(
+                                modifier = Modifier.width(260.dp),
+                                variant = PiecerCardVariant.Light
+                            ) {
+                                Text(
+                                    text = insight.title,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = colors.mutedText
+                                )
+                                Spacer(modifier = Modifier.height(spacing.xs))
+                                Text(
+                                    text = insight.message,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = colors.onCardLight
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         uiState.criticalBudget?.let { critical ->
             item {
                 val badgeColor = when (critical.progress.status) {
@@ -250,6 +338,26 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
+            }
+        }
+
+        if (uiState.upcomingTransactions.isNotEmpty()) {
+            item {
+                Text(
+                    text = stringResource(id = R.string.home_upcoming_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = colorScheme.onBackground
+                )
+            }
+            items(
+                items = uiState.upcomingTransactions,
+                key = { "upcoming_${it.transaction.id}" }
+            ) { item ->
+                TransactionRowItem(
+                    item = item,
+                    onClick = { onEditTransaction(item.transaction.id) },
+                    isAmountHidden = uiState.isBalanceHidden
+                )
             }
         }
 

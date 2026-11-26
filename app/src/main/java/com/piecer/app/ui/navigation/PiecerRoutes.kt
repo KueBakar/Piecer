@@ -50,6 +50,8 @@ object PiecerRoutes {
     const val WALLETS = "wallets"
     const val BUDGETS = "budgets"
     const val GOALS = "goals"
+    const val PIECES = "pieces"
+    const val RECURRING = "recurring"
     const val SETTINGS = "settings"
     const val CRASH_REPORT = "crash_report"
 }

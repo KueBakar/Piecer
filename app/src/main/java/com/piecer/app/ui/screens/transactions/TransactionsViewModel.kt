@@ -99,7 +99,12 @@ class TransactionsViewModel @Inject constructor(
                     dayStartMillis = dayStart,
                     headerLabel = DateUtils.dayHeaderLabel(dayStart, now),
                     items = dayTxs.map { tx ->
-                        toDisplayItem(tx, categoryMap.mapValues { it.value.name }, walletMap.mapValues { it.value.name })
+                        toDisplayItem(
+                            tx = tx,
+                            categoryNames = categoryMap.mapValues { it.value.name },
+                            walletNames = walletMap.mapValues { it.value.name },
+                            isScheduled = DateUtils.isScheduledTransaction(tx.date, now)
+                        )
                     }
                 )
             }
@@ -144,7 +149,8 @@ class TransactionsViewModel @Inject constructor(
     private fun toDisplayItem(
         tx: TransactionEntity,
         categoryNames: Map<Long, String>,
-        walletNames: Map<Long, String>
+        walletNames: Map<Long, String>,
+        isScheduled: Boolean = false
     ): TransactionDisplayItem {
         val walletName = walletNames[tx.walletId].orEmpty()
         return when (tx.type) {
@@ -159,7 +165,8 @@ class TransactionsViewModel @Inject constructor(
                 TransactionDisplayItem(
                     transaction = tx,
                     title = "Transfer",
-                    subtitle = subtitle
+                    subtitle = subtitle,
+                    isScheduled = isScheduled
                 )
             }
             TransactionType.INCOME, TransactionType.EXPENSE -> {
@@ -168,7 +175,8 @@ class TransactionsViewModel @Inject constructor(
                 TransactionDisplayItem(
                     transaction = tx,
                     title = categoryName,
-                    subtitle = subtitle
+                    subtitle = subtitle,
+                    isScheduled = isScheduled
                 )
             }
         }

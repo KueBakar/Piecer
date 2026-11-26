@@ -3,6 +3,10 @@ package com.piecer.app.data.backup
 import com.piecer.app.data.local.entity.BudgetEntity
 import com.piecer.app.data.local.entity.CategoryEntity
 import com.piecer.app.data.local.entity.GoalEntity
+import com.piecer.app.data.local.entity.PieceAllocationEntity
+import com.piecer.app.data.local.entity.PieceCategoryEntity
+import com.piecer.app.data.local.entity.PieceEntity
+import com.piecer.app.data.local.entity.RecurringEntity
 import com.piecer.app.data.local.entity.TransactionEntity
 import com.piecer.app.data.local.entity.WalletEntity
 import com.piecer.app.data.preferences.ThemeMode
@@ -15,7 +19,8 @@ data class BackupSettings(
     val dailyReminderHour: Int = 20,
     val dailyReminderMinute: Int = 0,
     val blockScreenshots: Boolean = false,
-    val reduceMotion: Boolean = false
+    val reduceMotion: Boolean = false,
+    val piecesEnabled: Boolean = false
 )
 
 data class PiecerBackup(
@@ -26,9 +31,13 @@ data class PiecerBackup(
     val transactions: List<TransactionEntity>,
     val budgets: List<BudgetEntity>,
     val goals: List<GoalEntity>,
+    val pieces: List<PieceEntity> = emptyList(),
+    val pieceCategories: List<PieceCategoryEntity> = emptyList(),
+    val pieceAllocations: List<PieceAllocationEntity> = emptyList(),
+    val recurring: List<RecurringEntity> = emptyList(),
     val settings: BackupSettings
 ) {
     companion object {
-        const val CURRENT_VERSION = 1
+        const val CURRENT_VERSION = 2
     }
 }

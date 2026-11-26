@@ -6,6 +6,8 @@ import com.piecer.app.data.local.PiecerDatabase
 import com.piecer.app.data.local.dao.BudgetDao
 import com.piecer.app.data.local.dao.CategoryDao
 import com.piecer.app.data.local.dao.GoalDao
+import com.piecer.app.data.local.dao.PieceDao
+import com.piecer.app.data.local.dao.RecurringDao
 import com.piecer.app.data.local.dao.TransactionDao
 import com.piecer.app.data.local.dao.WalletDao
 import dagger.Module
@@ -29,7 +31,11 @@ object DatabaseModule {
             PiecerDatabase::class.java,
             PiecerDatabase.DATABASE_NAME
         )
-            .addMigrations(PiecerDatabase.MIGRATION_1_2, PiecerDatabase.MIGRATION_2_3)
+            .addMigrations(
+                PiecerDatabase.MIGRATION_1_2,
+                PiecerDatabase.MIGRATION_2_3,
+                PiecerDatabase.MIGRATION_3_4
+            )
             .addCallback(PiecerDatabase.createSeedCallback())
             .build()
     }
@@ -48,4 +54,10 @@ object DatabaseModule {
 
     @Provides
     fun provideGoalDao(database: PiecerDatabase): GoalDao = database.goalDao()
+
+    @Provides
+    fun providePieceDao(database: PiecerDatabase): PieceDao = database.pieceDao()
+
+    @Provides
+    fun provideRecurringDao(database: PiecerDatabase): RecurringDao = database.recurringDao()
 }

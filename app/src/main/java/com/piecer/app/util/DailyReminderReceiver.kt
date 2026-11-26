@@ -30,11 +30,15 @@ class DailyReminderReceiver : BroadcastReceiver() {
     @Inject
     lateinit var dailyReminderScheduler: DailyReminderScheduler
 
+    @Inject
+    lateinit var recurringProcessor: RecurringProcessor
+
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action
         val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                runCatching { recurringProcessor.checkUpcomingReminders() }
                 val settings = settingsRepository.getSettings()
                 if (!settings.dailyReminderEnabled) return@launch
 
