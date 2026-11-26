@@ -36,3 +36,23 @@ fun calculateWalletBalance(
     }
     return balance
 }
+
+/**
+ * Menghitung batas pengeluaran harian ("Boleh Jajan Hari Ini") dalam rupiah penuh (Long).
+ *
+ * Rumus Boleh Jajan Hari Ini:
+ * sisaBulanIni = pemasukanBulanIni - pengeluaranBulanIni
+ * bolehJajanHariIni = max(0, sisaBulanIni / max(1, sisaHariDiBulanIni))
+ *
+ * Keterangan: sisaHariDiBulanIni dihitung termasuk hari ini (minimal 1).
+ */
+fun calculateBolehJajanHariIni(
+    monthlyIncome: Long,
+    monthlyExpense: Long,
+    remainingDaysInMonth: Int
+): Long {
+    val remainingBudget = monthlyIncome - monthlyExpense
+    if (remainingBudget <= 0L) return 0L
+    val safeDays = remainingDaysInMonth.coerceAtLeast(1).toLong()
+    return remainingBudget / safeDays
+}

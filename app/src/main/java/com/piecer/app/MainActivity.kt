@@ -5,6 +5,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -32,16 +33,32 @@ import com.piecer.app.ui.navigation.PiecerRoutes
 import com.piecer.app.ui.navigation.PiecerTab
 import com.piecer.app.ui.screens.ComponentShowcaseScreen
 import com.piecer.app.ui.screens.PlaceholderTabScreen
+import com.piecer.app.ui.screens.addtransaction.AddTransactionScreen
+import com.piecer.app.ui.screens.addtransaction.AddTransactionViewModel
+import com.piecer.app.ui.screens.home.HomeScreen
+import com.piecer.app.ui.screens.home.HomeViewModel
+import com.piecer.app.ui.screens.transactions.TransactionsScreen
+import com.piecer.app.ui.screens.transactions.TransactionsViewModel
 import com.piecer.app.ui.theme.PiecerTheme
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    private val homeViewModel: HomeViewModel by viewModels()
+    private val transactionsViewModel: TransactionsViewModel by viewModels()
+    private val addTransactionViewModel: AddTransactionViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             PiecerTheme {
-                PiecerApp()
+                PiecerApp(
+                    homeViewModel = homeViewModel,
+                    transactionsViewModel = transactionsViewModel,
+                    addTransactionViewModel = addTransactionViewModel
+                )
             }
         }
     }
@@ -49,11 +66,16 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PiecerApp() {
+fun PiecerApp(
+    homeViewModel: HomeViewModel,
+    transactionsViewModel: TransactionsViewModel,
+    addTransactionViewModel: AddTransactionViewModel
+) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
-    val isShowcase = currentRoute == PiecerRoutes.SHOWCASE
+    val isFullScreen = currentRoute == PiecerRoutes.SHOWCASE ||
+        currentRoute == PiecerRoutes.ADD_TRANSACTION
 
     val context = LocalContext.current
     val isDebuggable = remember(context) {
@@ -62,13 +84,34 @@ fun PiecerApp() {
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    val addPlaceholderMessage = stringResource(id = R.string.placeholder_add_message)
+    val savedMessage = stringResource(id = R.string.tx_saved_snackbar)
+    val deletedMessage = stringResource(id = R.string.tx_deleted_snackbar)
+
+    val navigateToTab: (PiecerTab) -> Unit = { tab ->
+        navController.navigate(tab.route) {
+            popUpTo(navController.graph.findStartDestination().id) {
+                saveState = true
+            }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+
+    val openAddTransaction: () -> Unit = {
+        addTransactionViewModel.startNew()
+        navController.navigate(PiecerRoutes.ADD_TRANSACTION)
+    }
+
+    val openEditTransaction: (Long) -> Unit = { id ->
+        addTransactionViewModel.startEdit(id)
+        navController.navigate(PiecerRoutes.ADD_TRANSACTION)
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
-            if (!isShowcase) {
+            if (!isFullScreen) {
                 TopAppBar(
                     title = {
                         Text(
@@ -94,23 +137,11 @@ fun PiecerApp() {
             }
         },
         bottomBar = {
-            if (!isShowcase) {
+            if (!isFullScreen) {
                 PiecerBottomBar(
                     currentRoute = currentRoute,
-                    onTabSelected = { tab ->
-                        navController.navigate(tab.route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    onAddClick = {
-                        scope.launch {
-                            snackbarHostState.showSnackbar(addPlaceholderMessage)
-                        }
-                    }
+                    onTabSelected = navigateToTab,
+                    onAddClick = openAddTransaction
                 )
             }
         }
@@ -118,12 +149,43 @@ fun PiecerApp() {
         NavHost(
             navController = navController,
             startDestination = PiecerTab.Home.route,
-            modifier = Modifier.padding(innerPadding)
+            modifier = if (isFullScreen) Modifier else Modifier.padding(innerPadding)
         ) {
-            PiecerTab.entries.forEach { tab ->
-                composable(tab.route) {
-                    PlaceholderTabScreen(tab = tab)
-                }
+            composable(PiecerTab.Home.route) {
+                HomeScreen(
+                    viewModel = homeViewModel,
+                    onSeeAllTransactions = { navigateToTab(PiecerTab.Transactions) },
+                    onEditTransaction = openEditTransaction
+                )
+            }
+            composable(PiecerTab.Transactions.route) {
+                TransactionsScreen(
+                    viewModel = transactionsViewModel,
+                    onEditTransaction = openEditTransaction,
+                    onTransactionDeleted = {
+                        scope.launch {
+                            snackbarHostState.showSnackbar(deletedMessage)
+                        }
+                    }
+                )
+            }
+            composable(PiecerTab.Statistics.route) {
+                PlaceholderTabScreen(tab = PiecerTab.Statistics)
+            }
+            composable(PiecerTab.More.route) {
+                PlaceholderTabScreen(tab = PiecerTab.More)
+            }
+            composable(PiecerRoutes.ADD_TRANSACTION) {
+                AddTransactionScreen(
+                    viewModel = addTransactionViewModel,
+                    onClose = { navController.popBackStack() },
+                    onSaved = {
+                        navController.popBackStack()
+                        scope.launch {
+                            snackbarHostState.showSnackbar(savedMessage)
+                        }
+                    }
+                )
             }
             if (isDebuggable) {
                 composable(PiecerRoutes.SHOWCASE) {

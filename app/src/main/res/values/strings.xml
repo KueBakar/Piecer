@@ -43,4 +43,68 @@
     <string name="showcase_empty">EmptyState</string>
     <string name="showcase_empty_title">Belum ada transaksi</string>
     <string name="showcase_empty_desc">Catatan keuanganmu akan muncul di sini.</string>
+
+    <!-- Tambah / Edit Transaksi -->
+    <string name="tx_add_title">Tambah Transaksi</string>
+    <string name="tx_edit_title">Edit Transaksi</string>
+    <string name="tx_close">Tutup</string>
+    <string name="tx_type_expense">Pengeluaran</string>
+    <string name="tx_type_income">Pemasukan</string>
+    <string name="tx_type_transfer">Transfer</string>
+    <string name="tx_label_category">Kategori</string>
+    <string name="tx_label_wallet">Dompet</string>
+    <string name="tx_label_wallet_from">Dari Dompet</string>
+    <string name="tx_label_wallet_to">Ke Dompet</string>
+    <string name="tx_label_date">Tanggal</string>
+    <string name="tx_label_note">Catatan (opsional)</string>
+    <string name="tx_note_placeholder">Contoh: Makan siang, kopi, dll</string>
+    <string name="tx_save">Simpan</string>
+    <string name="tx_saved_snackbar">Transaksi disimpan</string>
+    <string name="tx_deleted_snackbar">Transaksi dihapus</string>
+    <string name="tx_backspace">Hapus angka</string>
+    <string name="tx_triple_zero">000</string>
+    <string name="tx_date_picker_confirm">Pilih</string>
+    <string name="tx_date_picker_cancel">Batal</string>
+    <string name="tx_error_amount">Nominal harus lebih dari Rp0</string>
+    <string name="tx_error_category">Pilih kategori terlebih dahulu</string>
+    <string name="tx_error_wallet">Pilih dompet terlebih dahulu</string>
+    <string name="tx_error_transfer_dest">Pilih dompet tujuan transfer</string>
+    <string name="tx_error_transfer_same">Dompet asal dan tujuan tidak boleh sama</string>
+    <string name="tx_no_other_wallet">Belum ada dompet tujuan lain</string>
+
+    <!-- Riwayat Transaksi -->
+    <string name="history_search_placeholder">Cari catatan atau kategori…</string>
+    <string name="history_search_clear">Hapus pencarian</string>
+    <string name="history_filter_all">Semua</string>
+    <string name="history_day_today">Hari ini</string>
+    <string name="history_day_yesterday">Kemarin</string>
+    <string name="history_delete">Hapus</string>
+    <string name="history_delete_title">Hapus Transaksi?</string>
+    <string name="history_delete_message">Transaksi ini akan dihapus permanen.</string>
+    <string name="history_delete_confirm">Hapus</string>
+    <string name="history_delete_cancel">Batal</string>
+    <string name="history_empty_title">Belum ada transaksi</string>
+    <string name="history_empty_desc">Ketuk tombol + di bawah untuk mencatat transaksi pertamamu.</string>
+    <string name="history_empty_filtered_title">Tidak ada hasil</string>
+    <string name="history_empty_filtered_desc">Coba ubah kata kunci atau filter transaksi.</string>
+    <string name="tx_transfer_label">Transfer</string>
+    <string name="tx_transfer_arrow">%1$s → %2$s</string>
+    <string name="tx_uncategorized">Tanpa kategori</string>
+
+    <!-- Home / Dashboard -->
+    <string name="home_greeting_morning">Selamat pagi</string>
+    <string name="home_greeting_afternoon">Selamat siang</string>
+    <string name="home_greeting_evening">Selamat sore</string>
+    <string name="home_greeting_night">Selamat malam</string>
+    <string name="home_total_balance">Total Saldo</string>
+    <string name="home_income_month">Pemasukan bulan ini</string>
+    <string name="home_expense_month">Pengeluaran bulan ini</string>
+    <string name="home_daily_allowance_title">Boleh Jajan Hari Ini</string>
+    <string name="home_daily_allowance_sub">%1$d hari tersisa bulan ini</string>
+    <string name="home_weekly_chart_title">Pengeluaran 7 Hari Terakhir</string>
+    <string name="home_weekly_chart_empty">Belum ada pengeluaran minggu ini</string>
+    <string name="home_recent_title">Transaksi Terakhir</string>
+    <string name="home_see_all">Lihat semua</string>
+    <string name="home_empty_title">Mulai catat keuanganmu</string>
+    <string name="home_empty_desc">Catat pemasukan dan pengeluaran harianmu agar lebih terkontrol.</string>
 </resources>

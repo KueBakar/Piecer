@@ -104,4 +104,34 @@ class BalanceCalculatorTest {
         assertEquals(350_000L, wallet1Balance)
         assertEquals(300_000L, wallet2Balance)
     }
+
+    @Test
+    fun `calculateBolehJajanHariIni divides remaining monthly budget by remaining days`() {
+        val daily = calculateBolehJajanHariIni(
+            monthlyIncome = 3_000_000L,
+            monthlyExpense = 1_500_000L,
+            remainingDaysInMonth = 10
+        )
+        assertEquals(150_000L, daily)
+    }
+
+    @Test
+    fun `calculateBolehJajanHariIni returns zero when expense exceeds income`() {
+        val daily = calculateBolehJajanHariIni(
+            monthlyIncome = 1_000_000L,
+            monthlyExpense = 1_250_000L,
+            remainingDaysInMonth = 5
+        )
+        assertEquals(0L, daily)
+    }
+
+    @Test
+    fun `calculateBolehJajanHariIni guards zero or negative remaining days`() {
+        val daily = calculateBolehJajanHariIni(
+            monthlyIncome = 500_000L,
+            monthlyExpense = 200_000L,
+            remainingDaysInMonth = 0
+        )
+        assertEquals(300_000L, daily)
+    }
 }
