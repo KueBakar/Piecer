@@ -10,10 +10,10 @@ import com.piecer.app.MainActivity
 import com.piecer.app.data.local.entity.TransactionEntity
 import com.piecer.app.data.local.entity.TransactionType
 import com.piecer.app.ui.navigation.PiecerRoutes
-import com.piecer.app.util.BalanceCalculator
-import com.piecer.app.util.BudgetCalculator
 import com.piecer.app.util.DateUtils
 import com.piecer.app.util.FinancialCycleHelper
+import com.piecer.app.util.calculateBolehJajanHariIni
+import com.piecer.app.util.calculateWalletBalance
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.flow.first
 import java.util.Calendar
@@ -114,23 +114,23 @@ object PiecerWidgetUpdater {
         val categories = entryPoint.categoryRepository().observeAll().first()
 
         val now = System.currentTimeMillis()
-        val effectiveTxs = transactions.filter { it.dateMillis <= now }
+        val effectiveTxs = DateUtils.effectiveTransactions(transactions, now)
 
-        val walletBalances = BalanceCalculator.calculateAllWalletBalances(wallets, effectiveTxs)
-        val totalBalance = walletBalances.sumOf { it.currentBalance }
-
-        val cyclePeriod = FinancialCycleHelper.getCyclePeriod(now, settings.cycleStartDay)
-        val remainingDays = DateUtils.remainingDaysInPeriod(now, cyclePeriod.endMillis)
-        val cycleTxs = effectiveTxs.filter {
-            it.dateMillis in cyclePeriod.startMillis..cyclePeriod.endMillis
+        val totalBalance = wallets.sumOf { wallet ->
+            calculateWalletBalance(wallet.id, wallet.initialBalance, effectiveTxs, now)
         }
-        val monthlySummary = BalanceCalculator.calculatePeriodSummary(cycleTxs)
-        val totalBudgetLimit = budgets.sumOf { it.limitAmount }
-        val dailyAllowance = BudgetCalculator.calculateDailyAllowance(
-            totalBudget = totalBudgetLimit,
-            totalExpense = monthlySummary.totalExpense,
-            totalBalance = totalBalance,
-            remainingDays = remainingDays
+
+        val cyclePeriod = FinancialCycleHelper.currentPeriod(now, settings.cycleStartDay)
+        val remainingDays = cyclePeriod.remainingDays
+        val cycleTxs = effectiveTxs.filter {
+            it.date in cyclePeriod.startMillis..cyclePeriod.endMillis
+        }
+        val monthlyIncome = cycleTxs.filter { it.type == TransactionType.INCOME }.sumOf { it.amount }
+        val monthlyExpense = cycleTxs.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amount }
+        val dailyAllowance = calculateBolehJajanHariIni(
+            monthlyIncome = monthlyIncome,
+            monthlyExpense = monthlyExpense,
+            remainingDaysInMonth = remainingDays
         )
 
         val hideAmounts = WidgetPrivacyPolicy.shouldHideAmounts(
@@ -141,7 +141,7 @@ object PiecerWidgetUpdater {
 
         val categoryNames = categories.associate { it.id to it.name }
         val recent = effectiveTxs
-            .sortedWith(compareByDescending<TransactionEntity> { it.dateMillis }.thenByDescending { it.createdAt })
+            .sortedWith(compareByDescending<TransactionEntity> { it.date }.thenByDescending { it.createdAt })
             .take(3)
             .map { tx ->
                 val title = tx.note.takeIf { it.isNotBlank() }

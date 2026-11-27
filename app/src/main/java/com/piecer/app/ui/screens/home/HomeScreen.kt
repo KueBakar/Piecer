@@ -88,7 +88,7 @@ fun HomeScreen(
                             Text(
                                 text = stringResource(id = R.string.wrapped_home_banner_title),
                                 style = MaterialTheme.typography.titleSmall,
-                                color = com.piecer.app.ui.theme.AccentMint
+                                color = com.piecer.app.ui.theme.Mint
                             )
                             Text(
                                 text = stringResource(id = R.string.wrapped_home_banner_desc),

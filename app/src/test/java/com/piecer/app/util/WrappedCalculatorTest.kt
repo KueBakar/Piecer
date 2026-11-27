@@ -1,6 +1,7 @@
 package com.piecer.app.util
 
 import com.piecer.app.data.local.entity.CategoryEntity
+import com.piecer.app.data.local.entity.CategoryType
 import com.piecer.app.data.local.entity.TransactionEntity
 import com.piecer.app.data.local.entity.TransactionType
 import org.junit.Assert.assertEquals
@@ -15,15 +16,15 @@ class WrappedCalculatorTest {
     fun calculate_excludesScheduledTransactions_andComputesMetrics() {
         val now = calendarMillis(2026, Calendar.MAY, 20, 12)
         val categories = listOf(
-            CategoryEntity(id = 1L, name = "Makan", type = TransactionType.EXPENSE, iconName = "food", colorHex = "#000000"),
-            CategoryEntity(id = 2L, name = "Transport", type = TransactionType.EXPENSE, iconName = "car", colorHex = "#000000")
+            CategoryEntity(id = 1L, name = "Makan", type = CategoryType.EXPENSE, iconKey = "food", colorKey = "mint", isDefault = true),
+            CategoryEntity(id = 2L, name = "Transport", type = CategoryType.EXPENSE, iconKey = "car", colorKey = "mint", isDefault = true)
         )
         val txs = listOf(
-            TransactionEntity(id = 1L, type = TransactionType.INCOME, amount = 1_000_000L, categoryId = null, walletId = 1L, dateMillis = calendarMillis(2026, Calendar.MAY, 2, 10)),
-            TransactionEntity(id = 2L, type = TransactionType.EXPENSE, amount = 200_000L, categoryId = 1L, walletId = 1L, dateMillis = calendarMillis(2026, Calendar.MAY, 3, 10)),
-            TransactionEntity(id = 3L, type = TransactionType.EXPENSE, amount = 100_000L, categoryId = 2L, walletId = 1L, dateMillis = calendarMillis(2026, Calendar.MAY, 4, 10)),
+            TransactionEntity(id = 1L, type = TransactionType.INCOME, amount = 1_000_000L, categoryId = null, walletId = 1L, date = calendarMillis(2026, Calendar.MAY, 2, 10), createdAt = 0L),
+            TransactionEntity(id = 2L, type = TransactionType.EXPENSE, amount = 200_000L, categoryId = 1L, walletId = 1L, date = calendarMillis(2026, Calendar.MAY, 3, 10), createdAt = 0L),
+            TransactionEntity(id = 3L, type = TransactionType.EXPENSE, amount = 100_000L, categoryId = 2L, walletId = 1L, date = calendarMillis(2026, Calendar.MAY, 4, 10), createdAt = 0L),
             // Scheduled future transaction should be excluded
-            TransactionEntity(id = 4L, type = TransactionType.EXPENSE, amount = 9_000_000L, categoryId = 1L, walletId = 1L, dateMillis = calendarMillis(2026, Calendar.MAY, 25, 10))
+            TransactionEntity(id = 4L, type = TransactionType.EXPENSE, amount = 9_000_000L, categoryId = 1L, walletId = 1L, date = calendarMillis(2026, Calendar.MAY, 25, 10), createdAt = 0L)
         )
 
         val summary = WrappedCalculator.calculate(

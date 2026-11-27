@@ -108,9 +108,34 @@ class MainActivity : FragmentActivity() {
     private val splitBillViewModel: SplitBillViewModel by viewModels()
     private val netWorthViewModel: NetWorthViewModel by viewModels()
     private val settingsViewModel: SettingsViewModel by viewModels()
+    private val pendingStartRouteState = mutableStateOf<String?>(null)
+    private val pendingQuickTypeState = mutableStateOf<TransactionType?>(null)
+    private val pendingFocusQuickEntryState = mutableStateOf(false)
+
+    private fun consumeLaunchIntent(intent: android.content.Intent?) {
+        if (intent == null) return
+        val startRoute = intent.getStringExtra(PiecerWidgetUpdater.EXTRA_START_ROUTE)
+        if (!startRoute.isNullOrBlank()) {
+            pendingStartRouteState.value = startRoute
+        }
+        val quickTypeRaw = intent.getStringExtra(PiecerWidgetUpdater.EXTRA_QUICK_TYPE)
+        if (!quickTypeRaw.isNullOrBlank()) {
+            pendingQuickTypeState.value = runCatching { TransactionType.valueOf(quickTypeRaw) }.getOrNull()
+        }
+        if (intent.getBooleanExtra(PiecerWidgetUpdater.EXTRA_FOCUS_QUICK_ENTRY, false)) {
+            pendingFocusQuickEntryState.value = true
+        }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        consumeLaunchIntent(intent)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        consumeLaunchIntent(intent)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             splashScreen.setOnExitAnimationListener { splashView -> splashView.remove() }
         }
@@ -205,6 +230,17 @@ class MainActivity : FragmentActivity() {
                                 splitBillViewModel = splitBillViewModel,
                                 netWorthViewModel = netWorthViewModel,
                                 settingsViewModel = settingsViewModel,
+                                wrappedViewModel = wrappedViewModel,
+                                pendingStartRoute = if (isLocked && settings.isPinEnabled) null else pendingStartRouteState.value,
+                                pendingQuickType = pendingQuickTypeState.value,
+                                pendingFocusQuickEntry = pendingFocusQuickEntryState.value,
+                                onPendingLaunchHandled = {
+                                    pendingStartRouteState.value = null
+                                    pendingQuickTypeState.value = null
+                                },
+                                onQuickEntryFocusHandled = {
+                                    pendingFocusQuickEntryState.value = false
+                                },
                                 onPinConfigured = mainViewModel::markSessionUnlocked,
                                 openCrashReportRequest = openCrashReportRequest,
                                 onCrashReportRequestHandled = { openCrashReportRequest = false },
@@ -409,6 +445,12 @@ fun PiecerApp(
     splitBillViewModel: SplitBillViewModel,
     netWorthViewModel: NetWorthViewModel,
     settingsViewModel: SettingsViewModel,
+    wrappedViewModel: WrappedViewModel,
+    pendingStartRoute: String? = null,
+    pendingQuickType: TransactionType? = null,
+    pendingFocusQuickEntry: Boolean = false,
+    onPendingLaunchHandled: () -> Unit = {},
+    onQuickEntryFocusHandled: () -> Unit = {},
     onPinConfigured: () -> Unit,
     openCrashReportRequest: Boolean = false,
     onCrashReportRequestHandled: () -> Unit = {},
@@ -426,6 +468,16 @@ fun PiecerApp(
         if (BuildConfig.CRASH_DIAGNOSTICS_ENABLED && openCrashReportRequest) {
             onCrashReportRequestHandled()
             navController.navigate(PiecerRoutes.CRASH_REPORT) {
+                launchSingleTop = true
+            }
+        }
+    }
+    LaunchedEffect(pendingStartRoute) {
+        if (pendingStartRoute == PiecerRoutes.ADD_TRANSACTION) {
+            addTransactionViewModel.startNew()
+            pendingQuickType?.let { addTransactionViewModel.onTypeChange(it) }
+            onPendingLaunchHandled()
+            navController.navigate(PiecerRoutes.ADD_TRANSACTION) {
                 launchSingleTop = true
             }
         }
@@ -516,7 +568,8 @@ fun PiecerApp(
                     onSeeAllTransactions = { navigateToTab(PiecerTab.Transactions) },
                     onEditTransaction = openEditTransaction,
                     onOpenBudgets = { navController.navigate(PiecerRoutes.BUDGETS) },
-                    onOpenPieces = { navController.navigate(PiecerRoutes.PIECES) }
+                    onOpenPieces = { navController.navigate(PiecerRoutes.PIECES) },
+                    onOpenWrapped = { navController.navigate(PiecerRoutes.WRAPPED) }
                 )
             }
             composable(PiecerTab.Transactions.route) {
@@ -674,7 +727,9 @@ fun PiecerApp(
                         scope.launch {
                             snackbarHostState.showSnackbar(savedMessage)
                         }
-                    }
+                    },
+                    focusQuickEntry = pendingFocusQuickEntry,
+                    onQuickEntryFocusHandled = onQuickEntryFocusHandled
                 )
             }
         }

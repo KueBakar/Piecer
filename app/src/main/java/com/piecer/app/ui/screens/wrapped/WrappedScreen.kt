@@ -47,14 +47,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.piecer.app.R
-import com.piecer.app.ui.theme.AccentMint
+import com.piecer.app.ui.theme.Mint
 import com.piecer.app.ui.theme.PiecerTheme
 import com.piecer.app.util.DateUtils
-import com.piecer.app.util.RupiahUtils
 import com.piecer.app.util.WrappedCardShareContent
 import com.piecer.app.util.WrappedPeriodMode
 import com.piecer.app.util.WrappedShareHelper
 import com.piecer.app.util.WrappedSummary
+import com.piecer.app.util.formatRupiah
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -185,7 +185,7 @@ fun WrappedScreen(
                             .padding(horizontal = 3.dp)
                             .size(if (selected) 8.dp else 6.dp)
                             .clip(CircleShape)
-                            .background(if (selected) AccentMint else colorScheme.outline)
+                            .background(if (selected) Mint else colorScheme.outline)
                     )
                 }
             }
@@ -261,7 +261,7 @@ private fun WrappedCardView(
                 Text(
                     text = card.eyebrow.uppercase(),
                     style = MaterialTheme.typography.labelLarge,
-                    color = AccentMint,
+                    color = Mint,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(4.dp))
@@ -286,7 +286,7 @@ private fun WrappedCardView(
                             useCenter = true
                         )
                         drawArc(
-                            color = AccentMint,
+                            color = Mint,
                             startAngle = 250f,
                             sweepAngle = 40f,
                             useCenter = true
@@ -308,7 +308,7 @@ private fun WrappedCardView(
                     fontSize = 34.sp,
                     lineHeight = 40.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = AccentMint
+                    color = Mint
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
@@ -336,7 +336,7 @@ private fun buildWrappedCards(
     val totalExpenseValue = if (hideAmountsForDisplay) {
         "${100 - summary.savingsRatioPercent.coerceIn(0, 100)}%"
     } else {
-        RupiahUtils.format(summary.totalExpense)
+        formatRupiah(summary.totalExpense)
     }
 
     val topCatValue = summary.topCategoryName ?: stringResource(id = R.string.tx_uncategorized)
@@ -345,13 +345,13 @@ private fun buildWrappedCards(
     } else {
         stringResource(
             id = R.string.wrapped_top_cat_amount_sub,
-            RupiahUtils.format(summary.topCategoryAmount),
+            formatRupiah(summary.topCategoryAmount),
             summary.topCategoryPercent
         )
     }
 
     val mostExpensiveDayText = summary.mostExpensiveDayMillis?.let {
-        DateUtils.formatFullDate(it)
+        DateUtils.formatDate(it)
     } ?: "—"
     val mostExpensiveValue = if (hideAmountsForDisplay) {
         val sharePct = if (summary.totalExpense > 0L) {
@@ -359,7 +359,7 @@ private fun buildWrappedCards(
         } else 0
         "$sharePct%"
     } else {
-        RupiahUtils.format(summary.mostExpensiveDayAmount)
+        formatRupiah(summary.mostExpensiveDayAmount)
     }
 
     val deltaText = when (val delta = summary.expenseChangePercent) {

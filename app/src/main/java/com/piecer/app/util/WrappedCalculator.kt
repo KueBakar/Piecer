@@ -40,7 +40,7 @@ object WrappedCalculator {
         periodLabel: String
     ): WrappedSummary {
         // Transaksi terjadwal (masa depan) tidak ikut terhitung.
-        val effectiveTxs = transactions.filter { it.dateMillis <= nowMillis }
+        val effectiveTxs = DateUtils.effectiveTransactions(transactions, nowMillis)
 
         val (startMillis, endMillis, prevStartMillis, prevEndMillis) = resolveBounds(
             mode = mode,
@@ -49,8 +49,8 @@ object WrappedCalculator {
             cycleStartDay = cycleStartDay
         )
 
-        val periodTxs = effectiveTxs.filter { it.dateMillis in startMillis..endMillis }
-        val prevPeriodTxs = effectiveTxs.filter { it.dateMillis in prevStartMillis..prevEndMillis }
+        val periodTxs = effectiveTxs.filter { it.date in startMillis..endMillis }
+        val prevPeriodTxs = effectiveTxs.filter { it.date in prevStartMillis..prevEndMillis }
 
         if (periodTxs.isEmpty()) {
             return WrappedSummary(
@@ -91,7 +91,7 @@ object WrappedCalculator {
             0
         }
 
-        val dayTotals = expenses.groupBy { startOfDayMillis(it.dateMillis) }
+        val dayTotals = expenses.groupBy { startOfDayMillis(it.date) }
             .mapValues { (_, list) -> list.sumOf { it.amount } }
         val mostExpensiveDay = dayTotals.maxByOrNull { it.value }
 
@@ -143,9 +143,9 @@ object WrappedCalculator {
                 sb.append("Kategori teratas: ${summary.topCategoryName} (${summary.topCategoryPercent}%)\n")
             }
         } else {
-            sb.append("Total pengeluaran: ${RupiahUtils.format(summary.totalExpense)}\n")
+            sb.append("Total pengeluaran: ${formatRupiah(summary.totalExpense)}\n")
             if (summary.topCategoryName != null) {
-                sb.append("Kategori teratas: ${summary.topCategoryName} (${RupiahUtils.format(summary.topCategoryAmount)})\n")
+                sb.append("Kategori teratas: ${summary.topCategoryName} (${formatRupiah(summary.topCategoryAmount)})\n")
             }
             sb.append("Rasio tabungan: ${summary.savingsRatioPercent}%\n")
         }
@@ -177,13 +177,13 @@ object WrappedCalculator {
                     set(Calendar.SECOND, 0)
                     set(Calendar.MILLISECOND, 0)
                 }.timeInMillis
-                val current = FinancialCycleHelper.getCyclePeriod(anchor, cycleStartDay)
+                val current = FinancialCycleHelper.currentPeriod(anchor, cycleStartDay)
                 val prevAnchor = Calendar.getInstance().apply {
                     timeInMillis = current.startMillis
                     add(Calendar.MONTH, -1)
                     set(Calendar.HOUR_OF_DAY, 12)
                 }.timeInMillis
-                val previous = FinancialCycleHelper.getCyclePeriod(prevAnchor, cycleStartDay)
+                val previous = FinancialCycleHelper.currentPeriod(prevAnchor, cycleStartDay)
                 PeriodBounds(current.startMillis, current.endMillis, previous.startMillis, previous.endMillis)
             }
 
@@ -242,7 +242,7 @@ object WrappedCalculator {
     private fun calculateLongestStreak(transactions: List<TransactionEntity>): Int {
         if (transactions.isEmpty()) return 0
         val dayKeys = transactions.map {
-            val cal = Calendar.getInstance().apply { timeInMillis = it.dateMillis }
+            val cal = Calendar.getInstance().apply { timeInMillis = it.date }
             cal.get(Calendar.YEAR) * 1000 + cal.get(Calendar.DAY_OF_YEAR)
         }.distinct().sorted()
 
