@@ -278,6 +278,8 @@
     <string name="settings_section_debug">Diagnostik (Debug)</string>
     <string name="settings_crash_report_title">Laporan masalah</string>
     <string name="settings_crash_report_desc">Lihat crash terakhir dan jejak kejadian</string>
+    <string name="settings_replay_splash_title">Putar ulang splash</string>
+    <string name="settings_replay_splash_desc">Tampilkan animasi splash lagi tanpa restart aplikasi</string>
     <string name="crash_report_title">Laporan Masalah</string>
     <string name="crash_report_empty">Belum ada laporan crash tersimpan.</string>
     <string name="crash_report_breadcrumbs_header">Jejak Kejadian Terkini</string>

@@ -69,6 +69,10 @@ class MainViewModel @Inject constructor(
         _showSplash.value = false
     }
 
+    fun replaySplash() {
+        _showSplash.value = true
+    }
+
     fun setBiometricPromptShowing(showing: Boolean) {
         isBiometricPromptShowing = showing
         if (showing) {

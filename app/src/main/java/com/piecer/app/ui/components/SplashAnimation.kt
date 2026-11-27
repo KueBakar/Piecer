@@ -1,13 +1,13 @@
 package com.piecer.app.ui.components
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -28,12 +28,9 @@ import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -42,54 +39,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.piecer.app.R
 import com.piecer.app.ui.theme.PiecerTheme
-import kotlin.math.cos
-import kotlin.math.sin
+import com.piecer.app.ui.theme.PlusJakartaSans
+import com.piecer.app.ui.theme.SplashInk
+import com.piecer.app.ui.theme.SplashWhite
 
-private const val ASSEMBLE_END_MS = 700f
-private const val POP_START_MS = 700f
-private const val POP_PEAK_MS = 810f
-private const val POP_END_MS = 950f
-private const val TITLE_START_MS = 850f
-private const val TITLE_END_MS = 1200f
-private const val TAGLINE_START_MS = 1000f
-private const val TAGLINE_END_MS = 1300f
-private const val FADE_OUT_START_MS = 1300f
-private const val FADE_OUT_DURATION_MS = 200f
-private const val TOTAL_DURATION_MS = 1500f
+private val BRAND_LETTERS = arrayOf("P", "I", "E", "C", "E", "R")
 
-private const val REDUCE_MOTION_HOLD_MS = 500f
-private const val REDUCE_MOTION_TOTAL_MS = 700f
-
-private const val ADAPTIVE_SAMPLE_WINDOW_MS = 400f
-private const val LOW_FPS_FRAME_THRESHOLD_MS = 22f
-
-private data class PieSliceTemplate(
-    val startAngle: Float,
-    val sweepAngle: Float,
-    val scatterDistanceDp: Float,
-    val scatterRotationDeg: Float
-)
-
-private class CachedPieSlice(
-    val path: Path,
-    val color: Color,
-    val dirX: Float,
-    val dirY: Float,
-    val scatterDistancePx: Float,
-    val scatterRotationDeg: Float
-)
-
-private class SplashAdaptiveState {
-    var lowEndMode: Boolean = false
+private class SplashPlaybackState {
+    var lightMode: Boolean = SplashSessionConfig.lightMode == true
+    var skipRequested: Boolean = false
+    var exitStartMs: Float = Float.POSITIVE_INFINITY
+    var exitDurationMs: Float = SPLASH_EXIT_DURATION_MS
 }
-
-private val PIE_SLICE_TEMPLATES = listOf(
-    PieSliceTemplate(startAngle = -90f, sweepAngle = 76f, scatterDistanceDp = 22f, scatterRotationDeg = -10f),
-    PieSliceTemplate(startAngle = -9.5f, sweepAngle = 68f, scatterDistanceDp = 24f, scatterRotationDeg = 9f),
-    PieSliceTemplate(startAngle = 63f, sweepAngle = 72f, scatterDistanceDp = 20f, scatterRotationDeg = -8f),
-    PieSliceTemplate(startAngle = 139.5f, sweepAngle = 66f, scatterDistanceDp = 25f, scatterRotationDeg = 11f),
-    PieSliceTemplate(startAngle = 210f, sweepAngle = 55.5f, scatterDistanceDp = 26f, scatterRotationDeg = -12f)
-)
 
 @Composable
 fun SplashAnimation(
@@ -98,11 +59,14 @@ fun SplashAnimation(
     onFinished: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val colorScheme = MaterialTheme.colorScheme
     val piecerColors = PiecerTheme.colors
     val spacing = PiecerTheme.spacing
     val density = LocalDensity.current
-    val titleSlidePx = remember(density) { with(density) { 12.dp.toPx() } }
+    val screenWidthDp = LocalConfiguration.current.screenWidthDp
+    val logoSizeDp = remember(screenWidthDp) {
+        minOf(SPLASH_LOGO_MAX_DP, screenWidthDp * SPLASH_LOGO_MAX_WIDTH_FRACTION).dp
+    }
+    val letterSlidePx = remember(density) { with(density) { 10.dp.toPx() } }
 
     var hasFinished by remember { mutableStateOf(false) }
     val latestIsAppReady by rememberUpdatedState(isAppReady)
@@ -117,269 +81,223 @@ fun SplashAnimation(
         }
     }
 
-    // Satu progress utama berbasis waktu (ms), hanya dibaca di fase gambar
     val elapsedMs = remember { Animatable(0f) }
-    val adaptiveState = remember { SplashAdaptiveState() }
+    val playbackState = remember { SplashPlaybackState() }
 
     LaunchedEffect(reduceMotion) {
-        adaptiveState.lowEndMode = false
+        playbackState.lightMode = SplashSessionConfig.lightMode == true
+        playbackState.skipRequested = false
+        playbackState.exitStartMs = Float.POSITIVE_INFINITY
+        playbackState.exitDurationMs = if (reduceMotion) {
+            SPLASH_REDUCE_MOTION_EXIT_DURATION_MS
+        } else {
+            SPLASH_EXIT_DURATION_MS
+        }
         elapsedMs.snapTo(0f)
 
-        if (reduceMotion) {
-            val startNanos = withFrameNanos { it }
-            while (true) {
-                val frameNanos = withFrameNanos { it }
-                val elapsed = (frameNanos - startNanos) / 1_000_000f
-                if (elapsed >= REDUCE_MOTION_HOLD_MS && latestIsAppReady) {
-                    break
+        var prevFrameNanos = withFrameNanos { it }
+        var currentElapsed = 0f
+        var sampleCount = 0
+        var sampleTotalNs = 0L
+        var adaptiveEvaluated = reduceMotion || SplashSessionConfig.lightMode != null
+
+        while (true) {
+            val frameNanos = withFrameNanos { it }
+            val rawDeltaNs = frameNanos - prevFrameNanos
+            prevFrameNanos = frameNanos
+
+            currentElapsed += clampFrameDeltaMs(rawDeltaNs)
+
+            if (!adaptiveEvaluated && rawDeltaNs > 0L) {
+                if (currentElapsed <= SPLASH_ADAPTIVE_SAMPLE_WINDOW_MS) {
+                    sampleTotalNs += rawDeltaNs
+                    sampleCount++
+                } else {
+                    adaptiveEvaluated = true
+                    val detectedLight = shouldUseLightMode(sampleCount, sampleTotalNs)
+                    playbackState.lightMode = detectedLight
+                    SplashSessionConfig.lightMode = detectedLight
                 }
             }
-            val fadeStartNanos = withFrameNanos { it }
-            while (true) {
-                val frameNanos = withFrameNanos { it }
-                val fadeElapsed = (frameNanos - fadeStartNanos) / 1_000_000f
-                elapsedMs.snapTo((REDUCE_MOTION_HOLD_MS + fadeElapsed).coerceAtMost(REDUCE_MOTION_TOTAL_MS))
-                if (fadeElapsed >= FADE_OUT_DURATION_MS) break
-            }
-            finishOnce()
-        } else {
-            val startNanos = withFrameNanos { it }
-            var prevFrameNanos = startNanos
-            var sampleCount = 0
-            var sampleTotalNs = 0L
-            var adaptiveEvaluated = false
 
-            while (true) {
-                val frameNanos = withFrameNanos { it }
-                val deltaNs = frameNanos - prevFrameNanos
-                prevFrameNanos = frameNanos
-                val currentElapsed = (frameNanos - startNanos) / 1_000_000f
-
-                if (!adaptiveEvaluated && currentElapsed <= ADAPTIVE_SAMPLE_WINDOW_MS && deltaNs > 0L) {
-                    sampleTotalNs += deltaNs
-                    sampleCount++
-                } else if (!adaptiveEvaluated && currentElapsed > ADAPTIVE_SAMPLE_WINDOW_MS) {
-                    adaptiveEvaluated = true
-                    if (sampleCount > 0) {
-                        val avgFrameMs = sampleTotalNs.toFloat() / sampleCount / 1_000_000f
-                        if (avgFrameMs > LOW_FPS_FRAME_THRESHOLD_MS) {
-                            adaptiveState.lowEndMode = true
-                        }
+            if (playbackState.exitStartMs.isInfinite()) {
+                val holdEndMs = computeHoldEndMs(reduceMotion, playbackState.lightMode)
+                if (playbackState.skipRequested && latestIsAppReady) {
+                    playbackState.exitStartMs = currentElapsed
+                    playbackState.exitDurationMs = SPLASH_SKIP_EXIT_DURATION_MS
+                } else if (currentElapsed >= holdEndMs && latestIsAppReady) {
+                    playbackState.exitStartMs = currentElapsed
+                    playbackState.exitDurationMs = if (reduceMotion) {
+                        SPLASH_REDUCE_MOTION_EXIT_DURATION_MS
+                    } else {
+                        SPLASH_EXIT_DURATION_MS
                     }
                 }
-
-                elapsedMs.snapTo(currentElapsed.coerceAtMost(FADE_OUT_START_MS))
-                if (currentElapsed >= FADE_OUT_START_MS && latestIsAppReady) {
-                    break
-                }
             }
 
-            val fadeStartNanos = withFrameNanos { it }
-            while (true) {
-                val frameNanos = withFrameNanos { it }
-                val fadeElapsed = (frameNanos - fadeStartNanos) / 1_000_000f
-                elapsedMs.snapTo((FADE_OUT_START_MS + fadeElapsed).coerceAtMost(TOTAL_DURATION_MS))
-                if (fadeElapsed >= FADE_OUT_DURATION_MS) break
+            elapsedMs.snapTo(currentElapsed)
+
+            if (!playbackState.exitStartMs.isInfinite() &&
+                currentElapsed >= playbackState.exitStartMs + playbackState.exitDurationMs
+            ) {
+                break
             }
-            finishOnce()
         }
+        finishOnce()
     }
 
-    val bgColor = colorScheme.background
-    val titleColor = colorScheme.onBackground
     val taglineColor = piecerColors.mutedText
-    val sliceColors = piecerColors.splashPieColors
-    val glowColor = piecerColors.mint
 
     Box(
         modifier = modifier
             .fillMaxSize()
             .graphicsLayer {
-                val t = elapsedMs.value
-                alpha = if (reduceMotion) {
-                    1f - ((t - REDUCE_MOTION_HOLD_MS) / FADE_OUT_DURATION_MS).coerceIn(0f, 1f)
-                } else {
-                    1f - ((t - FADE_OUT_START_MS) / FADE_OUT_DURATION_MS).coerceIn(0f, 1f)
-                }
+                val exit = computeExitState(
+                    elapsedMs = elapsedMs.value,
+                    exitStartMs = playbackState.exitStartMs,
+                    exitDurationMs = playbackState.exitDurationMs
+                )
+                alpha = exit.alpha
             }
-            .background(bgColor)
+            .background(SplashInk)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
                 onClick = {
-                    if (latestIsAppReady) finishOnce()
+                    playbackState.skipRequested = true
                 }
             ),
         contentAlignment = BiasAlignment(0f, -0.08f)
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = spacing.xl, vertical = spacing.lg),
+            modifier = Modifier
+                .padding(horizontal = spacing.xl, vertical = spacing.lg)
+                .graphicsLayer {
+                    val exit = computeExitState(
+                        elapsedMs = elapsedMs.value,
+                        exitStartMs = playbackState.exitStartMs,
+                        exitDurationMs = playbackState.exitDurationMs
+                    )
+                    scaleX = exit.scale
+                    scaleY = exit.scale
+                },
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             Box(
                 modifier = Modifier
-                    .size(108.dp)
+                    .size(logoSizeDp)
                     .graphicsLayer {
-                        if (reduceMotion || adaptiveState.lowEndMode) {
-                            scaleX = 1f
-                            scaleY = 1f
-                        } else {
-                            val t = elapsedMs.value
-                            val scale = when {
-                                t < POP_START_MS || t >= POP_END_MS -> 1f
-                                t < POP_PEAK_MS -> {
-                                    val p = FastOutSlowInEasing.transform(
-                                        ((t - POP_START_MS) / (POP_PEAK_MS - POP_START_MS)).coerceIn(0f, 1f)
-                                    )
-                                    1f + 0.06f * p
-                                }
-                                else -> {
-                                    val p = FastOutSlowInEasing.transform(
-                                        ((t - POP_PEAK_MS) / (POP_END_MS - POP_PEAK_MS)).coerceIn(0f, 1f)
-                                    )
-                                    1.06f - 0.06f * p
-                                }
-                            }
-                            scaleX = scale
-                            scaleY = scale
-                        }
+                        val pulseScale = computeLogoPulseScale(
+                            elapsedMs = elapsedMs.value,
+                            reduceMotion = reduceMotion,
+                            lightMode = playbackState.lightMode
+                        )
+                        scaleX = pulseScale
+                        scaleY = pulseScale
                     }
                     .drawWithCache {
-                        val center = Offset(size.width / 2f, size.height / 2f)
-                        val diameter = size.minDimension * 0.66f
-                        val radius = diameter / 2f
-                        val pieRect = Rect(
-                            left = center.x - radius,
-                            top = center.y - radius,
-                            right = center.x + radius,
-                            bottom = center.y + radius
+                        val r = size.minDimension / 2.14f
+                        val mainCenter = Offset(
+                            x = size.width / 2f - 0.07f * r,
+                            y = size.height / 2f + 0.07f * r
                         )
-                        val glowRadius = radius * 1.6f
-                        val glowBrush = Brush.radialGradient(
-                            colors = listOf(glowColor.copy(alpha = 0.22f), Color.Transparent),
-                            center = center,
-                            radius = glowRadius
+                        val sliceR = 0.94f * r
+                        val sliceCenterFinal = Offset(
+                            x = mainCenter.x + 0.20f * r,
+                            y = mainCenter.y - 0.20f * r
                         )
-                        val cachedSlices = PIE_SLICE_TEMPLATES.mapIndexed { index, spec ->
-                            val midAngleRad = Math.toRadians((spec.startAngle + spec.sweepAngle / 2f).toDouble())
-                            val path = Path().apply {
-                                moveTo(center.x, center.y)
-                                arcTo(
-                                    rect = pieRect,
-                                    startAngleDegrees = spec.startAngle,
-                                    sweepAngleDegrees = spec.sweepAngle,
-                                    forceMoveTo = false
-                                )
-                                close()
-                            }
-                            CachedPieSlice(
-                                path = path,
-                                color = sliceColors[index % sliceColors.size],
-                                dirX = cos(midAngleRad).toFloat(),
-                                dirY = sin(midAngleRad).toFloat(),
-                                scatterDistancePx = spec.scatterDistanceDp.dp.toPx(),
-                                scatterRotationDeg = spec.scatterRotationDeg
-                            )
-                        }
+                        val sliceFinalTopLeft = Offset(
+                            x = sliceCenterFinal.x - sliceR,
+                            y = sliceCenterFinal.y - sliceR
+                        )
+                        val sliceSize = Size(2f * sliceR, 2f * sliceR)
+                        val sliceStartOffset = Offset(1.0f * r, -1.0f * r)
 
                         onDrawBehind {
                             val t = elapsedMs.value
-                            val assembleProgress = if (reduceMotion) {
-                                1f
-                            } else {
-                                FastOutSlowInEasing.transform((t / ASSEMBLE_END_MS).coerceIn(0f, 1f))
-                            }
-                            val inverse = 1f - assembleProgress
-                            val pieceAlpha = (0.35f + 0.65f * assembleProgress).coerceIn(0f, 1f)
+                            val light = playbackState.lightMode
 
-                            if (!reduceMotion && !adaptiveState.lowEndMode && t in POP_START_MS..POP_END_MS) {
-                                val glowAlpha = if (t < POP_PEAK_MS) {
-                                    FastOutSlowInEasing.transform(
-                                        ((t - POP_START_MS) / (POP_PEAK_MS - POP_START_MS)).coerceIn(0f, 1f)
-                                    )
-                                } else {
-                                    1f - FastOutSlowInEasing.transform(
-                                        ((t - POP_PEAK_MS) / (POP_END_MS - POP_PEAK_MS)).coerceIn(0f, 1f)
-                                    )
-                                }
-                                if (glowAlpha > 0.005f) {
-                                    drawCircle(
-                                        brush = glowBrush,
-                                        radius = glowRadius,
-                                        center = center,
-                                        alpha = glowAlpha
-                                    )
-                                }
+                            val mainState = computeMainBodyState(t, reduceMotion, light)
+                            if (mainState.sweepDeg > 0.01f) {
+                                val rScaled = r * mainState.scale
+                                drawArc(
+                                    color = SplashWhite,
+                                    startAngle = 0f,
+                                    sweepAngle = mainState.sweepDeg,
+                                    useCenter = true,
+                                    topLeft = Offset(mainCenter.x - rScaled, mainCenter.y - rScaled),
+                                    size = Size(2f * rScaled, 2f * rScaled)
+                                )
                             }
 
-                            for (i in cachedSlices.indices) {
-                                val slice = cachedSlices[i]
-                                if (inverse <= 0.0005f) {
-                                    drawPath(
-                                        path = slice.path,
-                                        color = slice.color,
-                                        alpha = pieceAlpha
-                                    )
-                                } else {
-                                    val dx = slice.dirX * slice.scatterDistancePx * inverse
-                                    val dy = slice.dirY * slice.scatterDistancePx * inverse
-                                    val rot = slice.scatterRotationDeg * inverse
-                                    withTransform({
-                                        translate(left = dx, top = dy)
-                                        rotate(degrees = rot, pivot = center)
-                                    }) {
-                                        drawPath(
-                                            path = slice.path,
-                                            color = slice.color,
-                                            alpha = pieceAlpha
-                                        )
-                                    }
-                                }
+                            val sliceState = computeSliceState(t, reduceMotion, light)
+                            if (sliceState.alpha > 0.005f) {
+                                val inv = 1f - sliceState.progress
+                                drawArc(
+                                    color = SplashWhite,
+                                    startAngle = -90f,
+                                    sweepAngle = 90f,
+                                    useCenter = true,
+                                    topLeft = Offset(
+                                        x = sliceFinalTopLeft.x + sliceStartOffset.x * inv,
+                                        y = sliceFinalTopLeft.y + sliceStartOffset.y * inv
+                                    ),
+                                    size = sliceSize,
+                                    alpha = sliceState.alpha
+                                )
                             }
                         }
                     }
             )
 
-            Spacer(modifier = Modifier.height(spacing.lg))
+            Spacer(modifier = Modifier.height(28.dp))
 
-            Text(
-                text = stringResource(id = R.string.app_name),
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 8.sp
-                ),
-                color = titleColor,
-                maxLines = 1,
-                modifier = Modifier.graphicsLayer {
-                    if (reduceMotion) {
-                        alpha = 1f
-                        translationY = 0f
-                    } else {
-                        val raw = ((elapsedMs.value - TITLE_START_MS) / (TITLE_END_MS - TITLE_START_MS))
-                            .coerceIn(0f, 1f)
-                        val eased = FastOutSlowInEasing.transform(raw)
-                        alpha = eased
-                        translationY = if (adaptiveState.lowEndMode) 0f else (1f - eased) * titleSlidePx
-                    }
-                }
+            val letterStyle = MaterialTheme.typography.headlineLarge.copy(
+                fontFamily = PlusJakartaSans,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 28.sp,
+                lineHeight = 32.sp,
+                letterSpacing = 0.sp
             )
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                for (index in BRAND_LETTERS.indices) {
+                    Text(
+                        text = BRAND_LETTERS[index],
+                        style = letterStyle,
+                        color = SplashWhite,
+                        maxLines = 1,
+                        modifier = Modifier.graphicsLayer {
+                            val state = computeLetterState(
+                                elapsedMs = elapsedMs.value,
+                                letterIndex = index,
+                                reduceMotion = reduceMotion,
+                                lightMode = playbackState.lightMode
+                            )
+                            alpha = state.alpha
+                            translationY = state.offsetFraction * letterSlidePx
+                        }
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(spacing.xs))
 
             Text(
                 text = stringResource(id = R.string.splash_tagline),
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
                 color = taglineColor,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.graphicsLayer {
-                    alpha = if (reduceMotion) {
-                        1f
-                    } else {
-                        val raw = ((elapsedMs.value - TAGLINE_START_MS) / (TAGLINE_END_MS - TAGLINE_START_MS))
-                            .coerceIn(0f, 1f)
-                        FastOutSlowInEasing.transform(raw)
-                    }
+                    alpha = computeTaglineAlpha(
+                        elapsedMs = elapsedMs.value,
+                        reduceMotion = reduceMotion,
+                        lightMode = playbackState.lightMode
+                    )
                 }
             )
         }

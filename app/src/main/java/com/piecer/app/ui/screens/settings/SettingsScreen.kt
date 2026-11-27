@@ -80,7 +80,8 @@ fun SettingsScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     onPinConfigured: () -> Unit = {},
-    onOpenCrashReport: () -> Unit = {}
+    onOpenCrashReport: () -> Unit = {},
+    onReplaySplash: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val settings = uiState.settings
@@ -436,11 +437,19 @@ fun SettingsScreen(
 
                 item {
                     PiecerCard(variant = PiecerCardVariant.Light) {
-                        SettingsActionRow(
-                            title = stringResource(id = R.string.settings_crash_report_title),
-                            subtitle = stringResource(id = R.string.settings_crash_report_desc),
-                            onClick = onOpenCrashReport
-                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                            SettingsActionRow(
+                                title = stringResource(id = R.string.settings_crash_report_title),
+                                subtitle = stringResource(id = R.string.settings_crash_report_desc),
+                                onClick = onOpenCrashReport
+                            )
+                            HorizontalDivider(color = colorScheme.outlineVariant)
+                            SettingsActionRow(
+                                title = stringResource(id = R.string.settings_replay_splash_title),
+                                subtitle = stringResource(id = R.string.settings_replay_splash_desc),
+                                onClick = onReplaySplash
+                            )
+                        }
                     }
                 }
             }

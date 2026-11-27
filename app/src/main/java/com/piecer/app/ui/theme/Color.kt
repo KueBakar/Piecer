@@ -13,6 +13,10 @@ val White = Color(0xFFFFFFFF)
 val Mist = Color(0xFFE4E4E7)
 val Stone = Color(0xFF8E8E93)
 
+// Warna khusus brand splash (selaras dengan ic_launcher)
+val SplashInk = Ink
+val SplashWhite = White
+
 // Aksen khusus makna uang (RULES.md)
 val Mint = Color(0xFF34D399)
 val Coral = Color(0xFFF87171)

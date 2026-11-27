@@ -3,6 +3,7 @@ package com.piecer.app
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -112,6 +113,28 @@ class MainActivity : FragmentActivity() {
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
             }
 
+            val useDarkSystemBars = showSplash || darkTheme
+            LaunchedEffect(useDarkSystemBars) {
+                enableEdgeToEdge(
+                    statusBarStyle = if (useDarkSystemBars) {
+                        SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                    } else {
+                        SystemBarStyle.light(
+                            android.graphics.Color.TRANSPARENT,
+                            android.graphics.Color.TRANSPARENT
+                        )
+                    },
+                    navigationBarStyle = if (useDarkSystemBars) {
+                        SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                    } else {
+                        SystemBarStyle.light(
+                            android.graphics.Color.TRANSPARENT,
+                            android.graphics.Color.TRANSPARENT
+                        )
+                    }
+                )
+            }
+
             var firstFrameDrawn by remember { mutableStateOf(false) }
             LaunchedEffect(Unit) {
                 withFrameNanos { }
@@ -164,7 +187,8 @@ class MainActivity : FragmentActivity() {
                                 settingsViewModel = settingsViewModel,
                                 onPinConfigured = mainViewModel::markSessionUnlocked,
                                 openCrashReportRequest = openCrashReportRequest,
-                                onCrashReportRequestHandled = { openCrashReportRequest = false }
+                                onCrashReportRequestHandled = { openCrashReportRequest = false },
+                                onReplaySplash = mainViewModel::replaySplash
                             )
 
                             if (isLocked && settings.isPinEnabled) {
@@ -363,7 +387,8 @@ fun PiecerApp(
     settingsViewModel: SettingsViewModel,
     onPinConfigured: () -> Unit,
     openCrashReportRequest: Boolean = false,
-    onCrashReportRequestHandled: () -> Unit = {}
+    onCrashReportRequestHandled: () -> Unit = {},
+    onReplaySplash: () -> Unit = {}
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -560,6 +585,11 @@ fun PiecerApp(
                             navController.navigate(PiecerRoutes.CRASH_REPORT) {
                                 launchSingleTop = true
                             }
+                        }
+                    },
+                    onReplaySplash = {
+                        if (BuildConfig.CRASH_DIAGNOSTICS_ENABLED) {
+                            onReplaySplash()
                         }
                     }
                 )
