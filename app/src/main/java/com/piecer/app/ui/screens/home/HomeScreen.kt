@@ -54,6 +54,7 @@ fun HomeScreen(
     onEditTransaction: (Long) -> Unit,
     onOpenBudgets: () -> Unit,
     onOpenPieces: () -> Unit = {},
+    onOpenWrapped: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -69,6 +70,36 @@ fun HomeScreen(
         ),
         verticalArrangement = Arrangement.spacedBy(spacing.lg)
     ) {
+        if (uiState.remainingDaysInMonth <= 1 && uiState.hasAnyTransaction) {
+            item {
+                androidx.compose.material3.Surface(
+                    onClick = onOpenWrapped,
+                    shape = MaterialTheme.shapes.large,
+                    color = colorScheme.surface
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(spacing.md),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(id = R.string.wrapped_home_banner_title),
+                                style = MaterialTheme.typography.titleSmall,
+                                color = com.piecer.app.ui.theme.AccentMint
+                            )
+                            Text(
+                                text = stringResource(id = R.string.wrapped_home_banner_desc),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        }
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),

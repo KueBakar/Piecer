@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:enabled="true"
+        android:icon="@android:drawable/ic_input_add"
+        android:shortcutId="shortcut_add_expense"
+        android:shortcutLongLabel="@string/shortcut_add_expense"
+        android:shortcutShortLabel="@string/shortcut_add_expense">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.piecer.app.MainActivity"
+            android:targetPackage="com.piecer.app">
+            <extra
+                android:name="extra_start_route"
+                android:value="add_transaction" />
+            <extra
+                android:name="extra_quick_type"
+                android:value="EXPENSE" />
+        </intent>
+    </shortcut>
+
+    <shortcut
+        android:enabled="true"
+        android:icon="@android:drawable/ic_input_add"
+        android:shortcutId="shortcut_add_income"
+        android:shortcutLongLabel="@string/shortcut_add_income"
+        android:shortcutShortLabel="@string/shortcut_add_income">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.piecer.app.MainActivity"
+            android:targetPackage="com.piecer.app">
+            <extra
+                android:name="extra_start_route"
+                android:value="add_transaction" />
+            <extra
+                android:name="extra_quick_type"
+                android:value="INCOME" />
+        </intent>
+    </shortcut>
+
+    <shortcut
+        android:enabled="true"
+        android:icon="@android:drawable/ic_menu_edit"
+        android:shortcutId="shortcut_quick_sentence"
+        android:shortcutLongLabel="@string/shortcut_quick_sentence"
+        android:shortcutShortLabel="@string/shortcut_quick_sentence">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.piecer.app.MainActivity"
+            android:targetPackage="com.piecer.app">
+            <extra
+                android:name="extra_start_route"
+                android:value="add_transaction" />
+            <extra
+                android:name="extra_focus_quick_entry"
+                android:value="true" />
+        </intent>
+    </shortcut>
+</shortcuts>

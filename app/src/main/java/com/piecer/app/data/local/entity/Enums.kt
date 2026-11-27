@@ -22,3 +22,18 @@ enum class RecurringInterval {
     WEEKLY,
     MONTHLY
 }
+
+enum class DebtDirection {
+    OWE_ME,
+    I_OWE
+}
+
+enum class AssetType {
+    EMAS,
+    SAHAM,
+    REKSADANA,
+    CRYPTO,
+    PROPERTI,
+    KENDARAAN,
+    LAINNYA
+}

@@ -46,6 +46,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -67,12 +68,22 @@ fun AddTransactionScreen(
     viewModel: AddTransactionViewModel,
     onClose: () -> Unit,
     onSaved: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    focusQuickEntry: Boolean = false,
+    onQuickEntryFocusHandled: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val spacing = PiecerTheme.spacing
     val colorScheme = MaterialTheme.colorScheme
     var showDatePicker by remember { mutableStateOf(false) }
+    val quickEntryFocusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
+
+    LaunchedEffect(focusQuickEntry) {
+        if (focusQuickEntry && uiState.editingId == null) {
+            quickEntryFocusRequester.requestFocus()
+            onQuickEntryFocusHandled()
+        }
+    }
 
     val amountTone = when (uiState.type) {
         TransactionType.EXPENSE -> AmountTone.Expense
@@ -129,7 +140,9 @@ fun AddTransactionScreen(
                     OutlinedTextField(
                         value = uiState.quickEntryText,
                         onValueChange = viewModel::onQuickEntryChange,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(quickEntryFocusRequester),
                         label = { Text(text = stringResource(id = R.string.tx_quick_entry_label)) },
                         placeholder = { Text(text = stringResource(id = R.string.tx_quick_entry_placeholder)) },
                         singleLine = true,
@@ -308,7 +321,9 @@ fun AddTransactionScreen(
                 if (uiState.type == TransactionType.INCOME && uiState.pieces.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(spacing.md))
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(quickEntryFocusRequester),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -342,7 +357,9 @@ fun AddTransactionScreen(
                                 )
                                 uiState.pieceSplitPreview.forEach { item ->
                                     Row(
-                                        modifier = Modifier.fillMaxWidth(),
+                                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(quickEntryFocusRequester),
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
                                         Text(
@@ -365,7 +382,9 @@ fun AddTransactionScreen(
                 if (uiState.editingId == null) {
                     Spacer(modifier = Modifier.height(spacing.md))
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(quickEntryFocusRequester),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {

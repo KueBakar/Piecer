@@ -1,9 +1,15 @@
 package com.piecer.app.data.backup
 
+import com.piecer.app.data.local.entity.AssetEntity
+import com.piecer.app.data.local.entity.AssetHistoryEntity
+import com.piecer.app.data.local.entity.AssetType
 import com.piecer.app.data.local.entity.BudgetEntity
 import com.piecer.app.data.local.entity.BudgetPeriodType
 import com.piecer.app.data.local.entity.CategoryEntity
 import com.piecer.app.data.local.entity.CategoryType
+import com.piecer.app.data.local.entity.DebtDirection
+import com.piecer.app.data.local.entity.DebtEntity
+import com.piecer.app.data.local.entity.DebtPaymentEntity
 import com.piecer.app.data.local.entity.GoalEntity
 import com.piecer.app.data.local.entity.PieceAllocationEntity
 import com.piecer.app.data.local.entity.PieceCategoryEntity
@@ -46,8 +52,8 @@ class BackupJsonCodecTest {
                 )
             ),
             categories = listOf(
-                CategoryEntity(1L, "Makan", CategoryType.EXPENSE, "restaurant", "coral", true),
-                CategoryEntity(2L, "Gaji", CategoryType.INCOME, "payments", "mint", true)
+                CategoryEntity(1L, "Makan", CategoryType.EXPENSE, "restaurant", "coral", true, isArchived = false),
+                CategoryEntity(2L, "Gaji", CategoryType.INCOME, "payments", "mint", true, isArchived = true)
             ),
             transactions = listOf(
                 TransactionEntity(
@@ -133,6 +139,54 @@ class BackupJsonCodecTest {
                     createdAt = 1_760_000_000_000L
                 )
             ),
+            debts = listOf(
+                DebtEntity(
+                    id = 1L,
+                    personName = "Budi",
+                    totalAmount = 500_000L,
+                    paidAmount = 200_000L,
+                    direction = DebtDirection.OWE_ME,
+                    dueDate = 1_775_000_000_000L,
+                    note = "Pinjam makan",
+                    walletId = 1L,
+                    recordAsTransaction = false,
+                    createdAt = 1_765_000_000_000L
+                )
+            ),
+            debtPayments = listOf(
+                DebtPaymentEntity(
+                    id = 1L,
+                    debtId = 1L,
+                    amount = 200_000L,
+                    date = 1_766_000_000_000L,
+                    walletId = 1L,
+                    note = "Cicilan 1"
+                )
+            ),
+            assets = listOf(
+                AssetEntity(
+                    id = 1L,
+                    name = "Antam 5g",
+                    type = AssetType.EMAS,
+                    value = 7_500_000L,
+                    note = "Brankas",
+                    updatedAt = 1_770_000_000_000L
+                )
+            ),
+            assetHistory = listOf(
+                AssetHistoryEntity(
+                    id = 1L,
+                    assetId = 1L,
+                    value = 7_000_000L,
+                    date = 1_765_000_000_000L
+                ),
+                AssetHistoryEntity(
+                    id = 2L,
+                    assetId = 1L,
+                    value = 7_500_000L,
+                    date = 1_770_000_000_000L
+                )
+            ),
             settings = BackupSettings(
                 themeMode = ThemeMode.DARK,
                 cycleStartDay = 25,
@@ -178,5 +232,23 @@ class BackupJsonCodecTest {
         assertEquals(emptyList<PieceAllocationEntity>(), decoded.pieceAllocations)
         assertEquals(emptyList<RecurringEntity>(), decoded.recurring)
         assertEquals(false, decoded.settings.piecesEnabled)
+        assertEquals(false, decoded.categories.first().isArchived)
+        assertEquals(emptyList<DebtEntity>(), decoded.debts)
+        assertEquals(emptyList<AssetEntity>(), decoded.assets)
+    }
+
+    @Test
+    fun `decode supports legacy v2 backup without debts or assets`() {
+        val v2Json = """
+            {"version":2,"exportedAt":1770000000000,"wallets":[],"categories":[{"id":1,"name":"Makan","type":"EXPENSE","iconKey":"restaurant","colorKey":"coral","isDefault":true}],"transactions":[],"budgets":[],"goals":[],"pieces":[],"pieceCategories":[],"pieceAllocations":[],"recurring":[],"settings":{"themeMode":"DARK","cycleStartDay":1,"isBalanceHidden":false,"dailyReminderEnabled":false,"dailyReminderHour":20,"dailyReminderMinute":0,"blockScreenshots":false,"reduceMotion":false,"piecesEnabled":true}}
+        """.trimIndent()
+        val decoded = BackupJsonCodec.decode(v2Json)
+        assertEquals(2, decoded.version)
+        assertEquals(true, decoded.settings.piecesEnabled)
+        assertEquals(false, decoded.categories.first().isArchived)
+        assertEquals(emptyList<DebtEntity>(), decoded.debts)
+        assertEquals(emptyList<DebtPaymentEntity>(), decoded.debtPayments)
+        assertEquals(emptyList<AssetEntity>(), decoded.assets)
+        assertEquals(emptyList<AssetHistoryEntity>(), decoded.assetHistory)
     }
 }

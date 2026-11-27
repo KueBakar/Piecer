@@ -15,9 +15,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.AccountBalance
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
+import androidx.compose.material.icons.rounded.Category
 import androidx.compose.material.icons.rounded.DonutLarge
+import androidx.compose.material.icons.rounded.Groups
+import androidx.compose.material.icons.rounded.Handshake
 import androidx.compose.material.icons.rounded.PieChart
 import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.Savings
@@ -40,10 +45,15 @@ import com.piecer.app.ui.theme.PiecerTheme
 fun MoreScreen(
     onOpenPieces: () -> Unit,
     onOpenWallets: () -> Unit,
+    onOpenCategories: () -> Unit,
     onOpenBudgets: () -> Unit,
     onOpenGoals: () -> Unit,
+    onOpenDebts: () -> Unit,
+    onOpenSplitBill: () -> Unit,
+    onOpenNetWorth: () -> Unit,
     onOpenRecurring: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenWrapped: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val spacing = PiecerTheme.spacing
@@ -85,6 +95,42 @@ fun MoreScreen(
 
         item {
             MoreMenuCard(
+                icon = Icons.Rounded.Category,
+                title = stringResource(id = R.string.more_categories_title),
+                subtitle = stringResource(id = R.string.more_categories_desc),
+                onClick = onOpenCategories
+            )
+        }
+
+        item {
+            MoreMenuCard(
+                icon = Icons.Rounded.Handshake,
+                title = stringResource(id = R.string.more_debts_title),
+                subtitle = stringResource(id = R.string.more_debts_desc),
+                onClick = onOpenDebts
+            )
+        }
+
+        item {
+            MoreMenuCard(
+                icon = Icons.Rounded.Groups,
+                title = stringResource(id = R.string.more_split_title),
+                subtitle = stringResource(id = R.string.more_split_desc),
+                onClick = onOpenSplitBill
+            )
+        }
+
+        item {
+            MoreMenuCard(
+                icon = Icons.Rounded.AccountBalance,
+                title = stringResource(id = R.string.more_networth_title),
+                subtitle = stringResource(id = R.string.more_networth_desc),
+                onClick = onOpenNetWorth
+            )
+        }
+
+        item {
+            MoreMenuCard(
                 icon = Icons.Rounded.PieChart,
                 title = stringResource(id = R.string.more_budgets_title),
                 subtitle = stringResource(id = R.string.more_budgets_desc),
@@ -107,6 +153,15 @@ fun MoreScreen(
                 title = stringResource(id = R.string.more_recurring_title),
                 subtitle = stringResource(id = R.string.more_recurring_desc),
                 onClick = onOpenRecurring
+            )
+        }
+
+        item {
+            MoreMenuCard(
+                icon = Icons.Rounded.AutoAwesome,
+                title = stringResource(id = R.string.wrapped_title),
+                subtitle = stringResource(id = R.string.wrapped_more_desc),
+                onClick = onOpenWrapped
             )
         }
 

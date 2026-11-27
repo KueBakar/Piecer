@@ -7,16 +7,22 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.piecer.app.data.local.dao.AssetDao
 import com.piecer.app.data.local.dao.BudgetDao
 import com.piecer.app.data.local.dao.CategoryDao
+import com.piecer.app.data.local.dao.DebtDao
 import com.piecer.app.data.local.dao.GoalDao
 import com.piecer.app.data.local.dao.PieceDao
 import com.piecer.app.data.local.dao.RecurringDao
 import com.piecer.app.data.local.dao.TransactionDao
 import com.piecer.app.data.local.dao.WalletDao
+import com.piecer.app.data.local.entity.AssetEntity
+import com.piecer.app.data.local.entity.AssetHistoryEntity
 import com.piecer.app.data.local.entity.BudgetEntity
 import com.piecer.app.data.local.entity.CategoryEntity
 import com.piecer.app.data.local.entity.CategoryType
+import com.piecer.app.data.local.entity.DebtEntity
+import com.piecer.app.data.local.entity.DebtPaymentEntity
 import com.piecer.app.data.local.entity.GoalEntity
 import com.piecer.app.data.local.entity.PieceAllocationEntity
 import com.piecer.app.data.local.entity.PieceCategoryEntity
@@ -36,9 +42,13 @@ import com.piecer.app.data.local.entity.WalletType
         PieceEntity::class,
         PieceCategoryEntity::class,
         PieceAllocationEntity::class,
-        RecurringEntity::class
+        RecurringEntity::class,
+        DebtEntity::class,
+        DebtPaymentEntity::class,
+        AssetEntity::class,
+        AssetHistoryEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -50,6 +60,8 @@ abstract class PiecerDatabase : RoomDatabase() {
     abstract fun goalDao(): GoalDao
     abstract fun pieceDao(): PieceDao
     abstract fun recurringDao(): RecurringDao
+    abstract fun debtDao(): DebtDao
+    abstract fun assetDao(): AssetDao
 
     companion object {
         const val DATABASE_NAME = "piecer.db"
@@ -179,6 +191,75 @@ abstract class PiecerDatabase : RoomDatabase() {
                 db.execSQL(
                     "CREATE INDEX IF NOT EXISTS `index_recurring_nextDueDate` ON `recurring` (`nextDueDate`)"
                 )
+            }
+        }
+
+        val MIGRATION_4_5: Migration = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE `categories` ADD COLUMN `isArchived` INTEGER NOT NULL DEFAULT 0"
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `debts` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `personName` TEXT NOT NULL,
+                        `totalAmount` INTEGER NOT NULL,
+                        `paidAmount` INTEGER NOT NULL,
+                        `direction` TEXT NOT NULL,
+                        `dueDate` INTEGER,
+                        `note` TEXT NOT NULL,
+                        `walletId` INTEGER,
+                        `recordAsTransaction` INTEGER NOT NULL,
+                        `createdAt` INTEGER NOT NULL,
+                        FOREIGN KEY(`walletId`) REFERENCES `wallets`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_debts_direction` ON `debts` (`direction`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_debts_dueDate` ON `debts` (`dueDate`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_debts_walletId` ON `debts` (`walletId`)")
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `debt_payments` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `debtId` INTEGER NOT NULL,
+                        `amount` INTEGER NOT NULL,
+                        `date` INTEGER NOT NULL,
+                        `walletId` INTEGER,
+                        `note` TEXT NOT NULL,
+                        FOREIGN KEY(`debtId`) REFERENCES `debts`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE,
+                        FOREIGN KEY(`walletId`) REFERENCES `wallets`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_debt_payments_debtId` ON `debt_payments` (`debtId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_debt_payments_walletId` ON `debt_payments` (`walletId`)")
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `assets` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `name` TEXT NOT NULL,
+                        `type` TEXT NOT NULL,
+                        `value` INTEGER NOT NULL,
+                        `note` TEXT NOT NULL,
+                        `updatedAt` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `asset_history` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `assetId` INTEGER NOT NULL,
+                        `value` INTEGER NOT NULL,
+                        `date` INTEGER NOT NULL,
+                        FOREIGN KEY(`assetId`) REFERENCES `assets`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_asset_history_assetId` ON `asset_history` (`assetId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_asset_history_date` ON `asset_history` (`date`)")
             }
         }
 

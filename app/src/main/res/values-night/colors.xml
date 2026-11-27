@@ -2,4 +2,12 @@
 <resources>
     <color name="splash_background">#0D0D0F</color>
     <color name="splash_icon_tint">#FFFFFF</color>
+    <color name="widget_surface">#1C1C1E</color>
+    <color name="widget_surface_border">#2C2C2E</color>
+    <color name="widget_text_primary">#FFFFFF</color>
+    <color name="widget_text_secondary">#8E8E93</color>
+    <color name="widget_button_bg">#FFFFFF</color>
+    <color name="widget_button_fg">#0D0D0F</color>
+    <color name="widget_accent_mint">#34D399</color>
+    <color name="widget_accent_coral">#F87171</color>
 </resources>

@@ -1,7 +1,11 @@
 package com.piecer.app.data.backup
 
+import com.piecer.app.data.local.entity.AssetEntity
+import com.piecer.app.data.local.entity.AssetHistoryEntity
 import com.piecer.app.data.local.entity.BudgetEntity
 import com.piecer.app.data.local.entity.CategoryEntity
+import com.piecer.app.data.local.entity.DebtEntity
+import com.piecer.app.data.local.entity.DebtPaymentEntity
 import com.piecer.app.data.local.entity.GoalEntity
 import com.piecer.app.data.local.entity.PieceAllocationEntity
 import com.piecer.app.data.local.entity.PieceCategoryEntity
@@ -35,9 +39,13 @@ data class PiecerBackup(
     val pieceCategories: List<PieceCategoryEntity> = emptyList(),
     val pieceAllocations: List<PieceAllocationEntity> = emptyList(),
     val recurring: List<RecurringEntity> = emptyList(),
+    val debts: List<DebtEntity> = emptyList(),
+    val debtPayments: List<DebtPaymentEntity> = emptyList(),
+    val assets: List<AssetEntity> = emptyList(),
+    val assetHistory: List<AssetHistoryEntity> = emptyList(),
     val settings: BackupSettings
 ) {
     companion object {
-        const val CURRENT_VERSION = 2
+        const val CURRENT_VERSION = 3
     }
 }

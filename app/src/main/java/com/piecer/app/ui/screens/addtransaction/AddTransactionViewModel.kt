@@ -108,8 +108,12 @@ class AddTransactionViewModel @Inject constructor(
         pieceRepository.observeAllPieces(),
         settingsRepository.settingsFlow
     ) { currentDraft, categories, wallets, pieces, settings ->
-        val expenseCategories = categories.filter { it.type == CategoryType.EXPENSE }
-        val incomeCategories = categories.filter { it.type == CategoryType.INCOME }
+        val expenseCategories = categories.filter {
+            it.type == CategoryType.EXPENSE && (!it.isArchived || it.id == currentDraft.selectedCategoryId)
+        }
+        val incomeCategories = categories.filter {
+            it.type == CategoryType.INCOME && (!it.isArchived || it.id == currentDraft.selectedCategoryId)
+        }
 
         val resolvedCategoryId = when (currentDraft.type) {
             TransactionType.EXPENSE -> currentDraft.selectedCategoryId

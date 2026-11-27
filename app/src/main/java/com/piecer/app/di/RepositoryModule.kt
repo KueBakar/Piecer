@@ -1,9 +1,13 @@
 package com.piecer.app.di
 
+import com.piecer.app.data.repository.AssetRepository
+import com.piecer.app.data.repository.AssetRepositoryImpl
 import com.piecer.app.data.repository.BudgetRepository
 import com.piecer.app.data.repository.BudgetRepositoryImpl
 import com.piecer.app.data.repository.CategoryRepository
 import com.piecer.app.data.repository.CategoryRepositoryImpl
+import com.piecer.app.data.repository.DebtRepository
+import com.piecer.app.data.repository.DebtRepositoryImpl
 import com.piecer.app.data.repository.GoalRepository
 import com.piecer.app.data.repository.GoalRepositoryImpl
 import com.piecer.app.data.repository.PieceRepository
@@ -51,4 +55,12 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindRecurringRepository(impl: RecurringRepositoryImpl): RecurringRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindDebtRepository(impl: DebtRepositoryImpl): DebtRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindAssetRepository(impl: AssetRepositoryImpl): AssetRepository
 }

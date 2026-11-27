@@ -99,4 +99,34 @@ class PiecerMigrationTest {
         assertTrue(executedSql.any { it.contains("CREATE TABLE IF NOT EXISTS `recurring`") })
         assertTrue(executedSql.any { it.contains("CREATE INDEX IF NOT EXISTS `index_recurring_nextDueDate`") })
     }
+
+    @Test
+    fun `migration 4 to 5 has correct version range and executes category archive, debts, and assets DDL`() {
+        val migration = PiecerDatabase.MIGRATION_4_5
+        assertEquals(4, migration.startVersion)
+        assertEquals(5, migration.endVersion)
+
+        val executedSql = mutableListOf<String>()
+        val dbProxy = Proxy.newProxyInstance(
+            SupportSQLiteDatabase::class.java.classLoader,
+            arrayOf(SupportSQLiteDatabase::class.java)
+        ) { _, method, args ->
+            if (method.name == "execSQL" && args != null && args.isNotEmpty()) {
+                executedSql.add(args[0] as String)
+            }
+            null
+        } as SupportSQLiteDatabase
+
+        migration.migrate(dbProxy)
+
+        assertEquals(12, executedSql.size)
+        assertTrue(executedSql.any { it.contains("ALTER TABLE `categories` ADD COLUMN `isArchived` INTEGER NOT NULL DEFAULT 0") })
+        assertTrue(executedSql.any { it.contains("CREATE TABLE IF NOT EXISTS `debts`") })
+        assertTrue(executedSql.any { it.contains("CREATE INDEX IF NOT EXISTS `index_debts_dueDate`") })
+        assertTrue(executedSql.any { it.contains("CREATE TABLE IF NOT EXISTS `debt_payments`") })
+        assertTrue(executedSql.any { it.contains("CREATE INDEX IF NOT EXISTS `index_debt_payments_debtId`") })
+        assertTrue(executedSql.any { it.contains("CREATE TABLE IF NOT EXISTS `assets`") })
+        assertTrue(executedSql.any { it.contains("CREATE TABLE IF NOT EXISTS `asset_history`") })
+        assertTrue(executedSql.any { it.contains("CREATE INDEX IF NOT EXISTS `index_asset_history_assetId`") })
+    }
 }

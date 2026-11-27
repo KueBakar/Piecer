@@ -237,4 +237,18 @@ class QuickEntryParserTest {
         assertEquals(2L, r.categoryId)
         assertEquals(1L, r.walletId)
     }
+
+    @Test fun case28_customCategoryRecognizedAndArchivedIgnored() {
+        val customCats = categories + listOf(
+            CategoryEntity(99L, "Kopi Susu", CategoryType.EXPENSE, "restaurant", "coral", false, isArchived = false),
+            CategoryEntity(100L, "Langganan Lama", CategoryType.EXPENSE, "receipt_long", "stone", false, isArchived = true)
+        )
+        val r1 = QuickEntryParser.parse("beli kopi susu 28rb", customCats, wallets, nowMillis, zone)
+        assertEquals(28_000L, r1.amount)
+        assertEquals(99L, r1.categoryId)
+
+        val r2 = QuickEntryParser.parse("bayar langganan lama 50rb", customCats, wallets, nowMillis, zone)
+        assertEquals(50_000L, r2.amount)
+        assertNull(r2.categoryId)
+    }
 }

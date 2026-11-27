@@ -51,11 +51,17 @@ import com.piecer.app.ui.screens.addtransaction.AddTransactionScreen
 import com.piecer.app.ui.screens.addtransaction.AddTransactionViewModel
 import com.piecer.app.ui.screens.budgets.BudgetsScreen
 import com.piecer.app.ui.screens.budgets.BudgetsViewModel
+import com.piecer.app.ui.screens.categories.CategoriesScreen
+import com.piecer.app.ui.screens.categories.CategoriesViewModel
+import com.piecer.app.ui.screens.debts.DebtsScreen
+import com.piecer.app.ui.screens.debts.DebtsViewModel
 import com.piecer.app.ui.screens.goals.GoalsScreen
 import com.piecer.app.ui.screens.goals.GoalsViewModel
 import com.piecer.app.ui.screens.home.HomeScreen
 import com.piecer.app.ui.screens.home.HomeViewModel
 import com.piecer.app.ui.screens.more.MoreScreen
+import com.piecer.app.ui.screens.networth.NetWorthScreen
+import com.piecer.app.ui.screens.networth.NetWorthViewModel
 import com.piecer.app.ui.screens.onboarding.OnboardingScreen
 import com.piecer.app.ui.screens.pieces.PiecesScreen
 import com.piecer.app.ui.screens.pieces.PiecesViewModel
@@ -65,12 +71,17 @@ import com.piecer.app.ui.screens.security.LockScreen
 import com.piecer.app.ui.screens.settings.CrashReportScreen
 import com.piecer.app.ui.screens.settings.SettingsScreen
 import com.piecer.app.ui.screens.settings.SettingsViewModel
+import com.piecer.app.ui.screens.splitbill.SplitBillScreen
+import com.piecer.app.ui.screens.splitbill.SplitBillViewModel
 import com.piecer.app.ui.screens.statistics.StatisticsScreen
 import com.piecer.app.ui.screens.statistics.StatisticsViewModel
 import com.piecer.app.ui.screens.transactions.TransactionsScreen
 import com.piecer.app.ui.screens.transactions.TransactionsViewModel
 import com.piecer.app.ui.screens.wallets.WalletsScreen
 import com.piecer.app.ui.screens.wallets.WalletsViewModel
+import com.piecer.app.ui.screens.wrapped.WrappedScreen
+import com.piecer.app.ui.screens.wrapped.WrappedViewModel
+import com.piecer.app.widget.PiecerWidgetUpdater
 import com.piecer.app.ui.theme.PiecerTheme
 import com.piecer.app.util.BreadcrumbLog
 import com.piecer.app.util.CrashReporter
@@ -90,7 +101,12 @@ class MainActivity : FragmentActivity() {
     private val budgetsViewModel: BudgetsViewModel by viewModels()
     private val goalsViewModel: GoalsViewModel by viewModels()
     private val piecesViewModel: PiecesViewModel by viewModels()
+    private val wrappedViewModel: WrappedViewModel by viewModels()
     private val recurringViewModel: RecurringViewModel by viewModels()
+    private val categoriesViewModel: CategoriesViewModel by viewModels()
+    private val debtsViewModel: DebtsViewModel by viewModels()
+    private val splitBillViewModel: SplitBillViewModel by viewModels()
+    private val netWorthViewModel: NetWorthViewModel by viewModels()
     private val settingsViewModel: SettingsViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -184,6 +200,10 @@ class MainActivity : FragmentActivity() {
                                 goalsViewModel = goalsViewModel,
                                 piecesViewModel = piecesViewModel,
                                 recurringViewModel = recurringViewModel,
+                                categoriesViewModel = categoriesViewModel,
+                                debtsViewModel = debtsViewModel,
+                                splitBillViewModel = splitBillViewModel,
+                                netWorthViewModel = netWorthViewModel,
                                 settingsViewModel = settingsViewModel,
                                 onPinConfigured = mainViewModel::markSessionUnlocked,
                                 openCrashReportRequest = openCrashReportRequest,
@@ -384,6 +404,10 @@ fun PiecerApp(
     goalsViewModel: GoalsViewModel,
     piecesViewModel: PiecesViewModel,
     recurringViewModel: RecurringViewModel,
+    categoriesViewModel: CategoriesViewModel,
+    debtsViewModel: DebtsViewModel,
+    splitBillViewModel: SplitBillViewModel,
+    netWorthViewModel: NetWorthViewModel,
     settingsViewModel: SettingsViewModel,
     onPinConfigured: () -> Unit,
     openCrashReportRequest: Boolean = false,
@@ -412,8 +436,13 @@ fun PiecerApp(
         currentRoute == PiecerRoutes.GOALS ||
         currentRoute == PiecerRoutes.PIECES ||
         currentRoute == PiecerRoutes.RECURRING ||
+        currentRoute == PiecerRoutes.CATEGORIES ||
+        currentRoute == PiecerRoutes.DEBTS ||
+        currentRoute == PiecerRoutes.SPLIT_BILL ||
+        currentRoute == PiecerRoutes.NET_WORTH ||
         currentRoute == PiecerRoutes.SETTINGS ||
-        currentRoute == PiecerRoutes.CRASH_REPORT
+        currentRoute == PiecerRoutes.CRASH_REPORT ||
+        currentRoute == PiecerRoutes.WRAPPED
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -514,10 +543,39 @@ fun PiecerApp(
                 MoreScreen(
                     onOpenPieces = { navController.navigate(PiecerRoutes.PIECES) },
                     onOpenWallets = { navController.navigate(PiecerRoutes.WALLETS) },
+                    onOpenCategories = { navController.navigate(PiecerRoutes.CATEGORIES) },
                     onOpenBudgets = { navController.navigate(PiecerRoutes.BUDGETS) },
                     onOpenGoals = { navController.navigate(PiecerRoutes.GOALS) },
+                    onOpenDebts = { navController.navigate(PiecerRoutes.DEBTS) },
+                    onOpenSplitBill = { navController.navigate(PiecerRoutes.SPLIT_BILL) },
+                    onOpenNetWorth = { navController.navigate(PiecerRoutes.NET_WORTH) },
                     onOpenRecurring = { navController.navigate(PiecerRoutes.RECURRING) },
-                    onOpenSettings = { navController.navigate(PiecerRoutes.SETTINGS) }
+                    onOpenSettings = { navController.navigate(PiecerRoutes.SETTINGS) },
+                    onOpenWrapped = { navController.navigate(PiecerRoutes.WRAPPED) }
+                )
+            }
+            composable(PiecerRoutes.CATEGORIES) {
+                CategoriesScreen(
+                    viewModel = categoriesViewModel,
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable(PiecerRoutes.DEBTS) {
+                DebtsScreen(
+                    viewModel = debtsViewModel,
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable(PiecerRoutes.SPLIT_BILL) {
+                SplitBillScreen(
+                    viewModel = splitBillViewModel,
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable(PiecerRoutes.NET_WORTH) {
+                NetWorthScreen(
+                    viewModel = netWorthViewModel,
+                    onBack = { navController.popBackStack() }
                 )
             }
             composable(PiecerRoutes.PIECES) {
@@ -597,6 +655,12 @@ fun PiecerApp(
             if (BuildConfig.CRASH_DIAGNOSTICS_ENABLED) {
                 composable(PiecerRoutes.CRASH_REPORT) {
                     CrashReportScreen(
+                        onBack = { navController.popBackStack() }
+                    )
+                }
+                composable(PiecerRoutes.WRAPPED) {
+                    WrappedScreen(
+                        viewModel = wrappedViewModel,
                         onBack = { navController.popBackStack() }
                     )
                 }

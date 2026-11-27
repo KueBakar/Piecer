@@ -1,10 +1,13 @@
 package com.piecer.app.data.repository
 
+import android.content.Context
 import com.piecer.app.data.local.dao.CategoryTotal
 import com.piecer.app.data.local.dao.PeriodSummary
 import com.piecer.app.data.local.dao.TransactionDao
 import com.piecer.app.data.local.entity.TransactionEntity
 import com.piecer.app.data.local.entity.TransactionType
+import com.piecer.app.widget.PiecerWidgetUpdater
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -32,7 +35,8 @@ interface TransactionRepository {
 
 @Singleton
 class TransactionRepositoryImpl @Inject constructor(
-    private val transactionDao: TransactionDao
+    private val transactionDao: TransactionDao,
+    @ApplicationContext private val context: Context
 ) : TransactionRepository {
     override fun observeAll(): Flow<List<TransactionEntity>> = transactionDao.observeAll()
 
@@ -58,12 +62,24 @@ class TransactionRepositoryImpl @Inject constructor(
         endMillis: Long
     ): Flow<List<CategoryTotal>> = transactionDao.observeTotalByCategory(type, startMillis, endMillis)
 
-    override suspend fun insert(transaction: TransactionEntity): Long =
-        transactionDao.insert(transaction)
+    override suspend fun insert(transaction: TransactionEntity): Long {
+        val id = transactionDao.insert(transaction)
+        PiecerWidgetUpdater.updateAllWidgets(context)
+        return id
+    }
 
-    override suspend fun update(transaction: TransactionEntity) = transactionDao.update(transaction)
+    override suspend fun update(transaction: TransactionEntity) {
+        transactionDao.update(transaction)
+        PiecerWidgetUpdater.updateAllWidgets(context)
+    }
 
-    override suspend fun delete(transaction: TransactionEntity) = transactionDao.delete(transaction)
+    override suspend fun delete(transaction: TransactionEntity) {
+        transactionDao.delete(transaction)
+        PiecerWidgetUpdater.updateAllWidgets(context)
+    }
 
-    override suspend fun deleteById(id: Long) = transactionDao.deleteById(id)
+    override suspend fun deleteById(id: Long) {
+        transactionDao.deleteById(id)
+        PiecerWidgetUpdater.updateAllWidgets(context)
+    }
 }

@@ -330,14 +330,16 @@ object QuickEntryParser {
             TransactionType.EXPENSE -> CategoryType.EXPENSE
             TransactionType.TRANSFER -> return null
         }
-        val candidates = categories.filter { it.type == targetCatType }
+        val candidates = categories.filter { it.type == targetCatType && !it.isArchived }
         if (candidates.isEmpty()) return null
 
-        // 1. Cocokkan langsung dengan nama kategori yang ada
+        // 1. Cocokkan langsung dengan nama kategori yang ada (termasuk kategori buatan pengguna)
         val directMatch = candidates
-            .sortedByDescending { it.name.length }
+            .sortedByDescending { it.name.trim().length }
             .firstOrNull { cat ->
-                Regex("""\b${Regex.escape(cat.name.lowercase())}\b""").containsMatchIn(lower)
+                val trimmed = cat.name.trim().lowercase()
+                trimmed.isNotEmpty() &&
+                    Regex("""\b${Regex.escape(trimmed)}\b""").containsMatchIn(lower)
             }
         if (directMatch != null) return directMatch.id
 

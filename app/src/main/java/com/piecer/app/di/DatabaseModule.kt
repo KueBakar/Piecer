@@ -3,8 +3,10 @@ package com.piecer.app.di
 import android.content.Context
 import androidx.room.Room
 import com.piecer.app.data.local.PiecerDatabase
+import com.piecer.app.data.local.dao.AssetDao
 import com.piecer.app.data.local.dao.BudgetDao
 import com.piecer.app.data.local.dao.CategoryDao
+import com.piecer.app.data.local.dao.DebtDao
 import com.piecer.app.data.local.dao.GoalDao
 import com.piecer.app.data.local.dao.PieceDao
 import com.piecer.app.data.local.dao.RecurringDao
@@ -34,7 +36,8 @@ object DatabaseModule {
             .addMigrations(
                 PiecerDatabase.MIGRATION_1_2,
                 PiecerDatabase.MIGRATION_2_3,
-                PiecerDatabase.MIGRATION_3_4
+                PiecerDatabase.MIGRATION_3_4,
+                PiecerDatabase.MIGRATION_4_5
             )
             .addCallback(PiecerDatabase.createSeedCallback())
             .build()
@@ -60,4 +63,10 @@ object DatabaseModule {
 
     @Provides
     fun provideRecurringDao(database: PiecerDatabase): RecurringDao = database.recurringDao()
+
+    @Provides
+    fun provideDebtDao(database: PiecerDatabase): DebtDao = database.debtDao()
+
+    @Provides
+    fun provideAssetDao(database: PiecerDatabase): AssetDao = database.assetDao()
 }

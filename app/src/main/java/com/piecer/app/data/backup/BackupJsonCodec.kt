@@ -1,9 +1,15 @@
 package com.piecer.app.data.backup
 
+import com.piecer.app.data.local.entity.AssetEntity
+import com.piecer.app.data.local.entity.AssetHistoryEntity
+import com.piecer.app.data.local.entity.AssetType
 import com.piecer.app.data.local.entity.BudgetEntity
 import com.piecer.app.data.local.entity.BudgetPeriodType
 import com.piecer.app.data.local.entity.CategoryEntity
 import com.piecer.app.data.local.entity.CategoryType
+import com.piecer.app.data.local.entity.DebtDirection
+import com.piecer.app.data.local.entity.DebtEntity
+import com.piecer.app.data.local.entity.DebtPaymentEntity
 import com.piecer.app.data.local.entity.GoalEntity
 import com.piecer.app.data.local.entity.PieceAllocationEntity
 import com.piecer.app.data.local.entity.PieceCategoryEntity
@@ -46,7 +52,8 @@ object BackupJsonCodec {
                 "type" to c.type.name,
                 "iconKey" to c.iconKey,
                 "colorKey" to c.colorKey,
-                "isDefault" to c.isDefault
+                "isDefault" to c.isDefault,
+                "isArchived" to c.isArchived
             )
         }
         sb.append(",\n")
@@ -150,6 +157,60 @@ object BackupJsonCodec {
         }
         sb.append(",\n")
 
+        sb.append("  \"debts\": ")
+        appendArray(sb, backup.debts) { d ->
+            appendObject(
+                "id" to d.id,
+                "personName" to d.personName,
+                "totalAmount" to d.totalAmount,
+                "paidAmount" to d.paidAmount,
+                "direction" to d.direction.name,
+                "dueDate" to d.dueDate,
+                "note" to d.note,
+                "walletId" to d.walletId,
+                "recordAsTransaction" to d.recordAsTransaction,
+                "createdAt" to d.createdAt
+            )
+        }
+        sb.append(",\n")
+
+        sb.append("  \"debtPayments\": ")
+        appendArray(sb, backup.debtPayments) { dp ->
+            appendObject(
+                "id" to dp.id,
+                "debtId" to dp.debtId,
+                "amount" to dp.amount,
+                "date" to dp.date,
+                "walletId" to dp.walletId,
+                "note" to dp.note
+            )
+        }
+        sb.append(",\n")
+
+        sb.append("  \"assets\": ")
+        appendArray(sb, backup.assets) { a ->
+            appendObject(
+                "id" to a.id,
+                "name" to a.name,
+                "type" to a.type.name,
+                "value" to a.value,
+                "note" to a.note,
+                "updatedAt" to a.updatedAt
+            )
+        }
+        sb.append(",\n")
+
+        sb.append("  \"assetHistory\": ")
+        appendArray(sb, backup.assetHistory) { ah ->
+            appendObject(
+                "id" to ah.id,
+                "assetId" to ah.assetId,
+                "value" to ah.value,
+                "date" to ah.date
+            )
+        }
+        sb.append(",\n")
+
         sb.append("  \"settings\": ")
         sb.appendObject(
             "themeMode" to backup.settings.themeMode.name,
@@ -195,7 +256,8 @@ object BackupJsonCodec {
                 type = CategoryType.valueOf(obj.reqString("type")),
                 iconKey = obj.reqString("iconKey"),
                 colorKey = obj.reqString("colorKey"),
-                isDefault = obj.reqBoolean("isDefault")
+                isDefault = obj.reqBoolean("isDefault"),
+                isArchived = obj.optBoolean("isArchived") ?: false
             )
         }
 
@@ -291,6 +353,56 @@ object BackupJsonCodec {
             )
         }
 
+        val debts = root.optArray("debts").map { elem ->
+            val obj = elem.asObj()
+            DebtEntity(
+                id = obj.reqLong("id"),
+                personName = obj.reqString("personName"),
+                totalAmount = obj.reqLong("totalAmount"),
+                paidAmount = obj.reqLong("paidAmount"),
+                direction = DebtDirection.valueOf(obj.reqString("direction")),
+                dueDate = obj.optLong("dueDate"),
+                note = obj.optString("note") ?: "",
+                walletId = obj.optLong("walletId"),
+                recordAsTransaction = obj.optBoolean("recordAsTransaction") ?: false,
+                createdAt = obj.reqLong("createdAt")
+            )
+        }
+
+        val debtPayments = root.optArray("debtPayments").map { elem ->
+            val obj = elem.asObj()
+            DebtPaymentEntity(
+                id = obj.reqLong("id"),
+                debtId = obj.reqLong("debtId"),
+                amount = obj.reqLong("amount"),
+                date = obj.reqLong("date"),
+                walletId = obj.optLong("walletId"),
+                note = obj.optString("note") ?: ""
+            )
+        }
+
+        val assets = root.optArray("assets").map { elem ->
+            val obj = elem.asObj()
+            AssetEntity(
+                id = obj.reqLong("id"),
+                name = obj.reqString("name"),
+                type = AssetType.valueOf(obj.reqString("type")),
+                value = obj.reqLong("value"),
+                note = obj.optString("note") ?: "",
+                updatedAt = obj.reqLong("updatedAt")
+            )
+        }
+
+        val assetHistory = root.optArray("assetHistory").map { elem ->
+            val obj = elem.asObj()
+            AssetHistoryEntity(
+                id = obj.reqLong("id"),
+                assetId = obj.reqLong("assetId"),
+                value = obj.reqLong("value"),
+                date = obj.reqLong("date")
+            )
+        }
+
         val settingsObj = root.reqObj("settings")
         val settings = BackupSettings(
             themeMode = ThemeMode.valueOf(settingsObj.reqString("themeMode")),
@@ -316,6 +428,10 @@ object BackupJsonCodec {
             pieceCategories = pieceCategories,
             pieceAllocations = pieceAllocations,
             recurring = recurring,
+            debts = debts,
+            debtPayments = debtPayments,
+            assets = assets,
+            assetHistory = assetHistory,
             settings = settings
         )
     }

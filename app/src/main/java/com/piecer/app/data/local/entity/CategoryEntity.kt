@@ -17,5 +17,6 @@ data class CategoryEntity(
     val type: CategoryType,
     val iconKey: String,
     val colorKey: String,
-    val isDefault: Boolean
+    val isDefault: Boolean,
+    val isArchived: Boolean = false
 )

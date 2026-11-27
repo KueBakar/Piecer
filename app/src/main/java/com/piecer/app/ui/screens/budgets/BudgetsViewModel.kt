@@ -108,7 +108,7 @@ class BudgetsViewModel @Inject constructor(
         }.sortedByDescending { it.progress.percentageInt }
 
         val budgetedCategoryIds = budgets.map { it.categoryId }.toSet()
-        val availableForAdd = expenseCategories.filter { it.id !in budgetedCategoryIds }
+        val availableForAdd = expenseCategories.filter { !it.isArchived && it.id !in budgetedCategoryIds }
 
         BudgetsUiState(
             items = items,

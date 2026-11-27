@@ -4,4 +4,12 @@
     <color name="ic_launcher_foreground">#FFFFFF</color>
     <color name="splash_background">#0D0D0F</color>
     <color name="splash_icon_tint">#FFFFFF</color>
+    <color name="widget_surface">#FFFFFF</color>
+    <color name="widget_surface_border">#E4E4E7</color>
+    <color name="widget_text_primary">#0D0D0F</color>
+    <color name="widget_text_secondary">#8E8E93</color>
+    <color name="widget_button_bg">#0D0D0F</color>
+    <color name="widget_button_fg">#FFFFFF</color>
+    <color name="widget_accent_mint">#34D399</color>
+    <color name="widget_accent_coral">#F87171</color>
 </resources>

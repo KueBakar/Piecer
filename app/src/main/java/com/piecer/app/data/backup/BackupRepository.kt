@@ -21,6 +21,10 @@ class BackupRepository @Inject constructor(
         val pieceCategories = database.pieceDao().getAllPieceCategories()
         val pieceAllocations = database.pieceDao().getAllAllocations()
         val recurring = database.recurringDao().getAll()
+        val debts = database.debtDao().getAllDebts()
+        val debtPayments = database.debtDao().getAllPayments()
+        val assets = database.assetDao().getAllAssets()
+        val assetHistory = database.assetDao().getAllHistory()
         val appSettings = settingsRepository.getSettings()
 
         return PiecerBackup(
@@ -35,6 +39,10 @@ class BackupRepository @Inject constructor(
             pieceCategories = pieceCategories,
             pieceAllocations = pieceAllocations,
             recurring = recurring,
+            debts = debts,
+            debtPayments = debtPayments,
+            assets = assets,
+            assetHistory = assetHistory,
             settings = BackupSettings(
                 themeMode = appSettings.themeMode,
                 cycleStartDay = appSettings.cycleStartDay,
@@ -55,6 +63,10 @@ class BackupRepository @Inject constructor(
             database.pieceDao().deleteAllPieceCategories()
             database.pieceDao().deleteAllPieces()
             database.recurringDao().deleteAll()
+            database.debtDao().deleteAllPayments()
+            database.debtDao().deleteAllDebts()
+            database.assetDao().deleteAllHistory()
+            database.assetDao().deleteAllAssets()
             database.transactionDao().deleteAll()
             database.budgetDao().deleteAll()
             database.goalDao().deleteAll()
@@ -70,6 +82,10 @@ class BackupRepository @Inject constructor(
             database.pieceDao().insertAllPieceCategories(backup.pieceCategories)
             database.pieceDao().insertAllocations(backup.pieceAllocations)
             database.recurringDao().insertAll(backup.recurring)
+            database.debtDao().insertAllDebts(backup.debts)
+            database.debtDao().insertAllPayments(backup.debtPayments)
+            database.assetDao().insertAllAssets(backup.assets)
+            database.assetDao().insertAllHistory(backup.assetHistory)
         }
 
         val s = backup.settings
