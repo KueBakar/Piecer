@@ -17,6 +17,8 @@ import com.piecer.app.util.BreadcrumbLog
 import com.piecer.app.util.CsvExporter
 import com.piecer.app.util.DailyReminderScheduler
 import com.piecer.app.util.PinHasher
+import com.piecer.app.util.update.UpdateManager
+import com.piecer.app.util.update.UpdateUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -47,8 +49,11 @@ class SettingsViewModel @Inject constructor(
     private val backupRepository: BackupRepository,
     private val transactionRepository: TransactionRepository,
     private val walletRepository: WalletRepository,
-    private val categoryRepository: CategoryRepository
+    private val categoryRepository: CategoryRepository,
+    private val updateManager: UpdateManager
 ) : ViewModel() {
+
+    val updateState: StateFlow<UpdateUiState> = updateManager.state
 
     private val pendingRestore = MutableStateFlow<PiecerBackup?>(null)
     private val statusMsg = MutableStateFlow<String?>(null)
@@ -82,6 +87,18 @@ class SettingsViewModel @Inject constructor(
 
     fun setReduceMotion(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setReduceMotion(enabled) }
+    }
+
+    fun setAutoUpdateEnabled(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setAutoUpdateEnabled(enabled) }
+    }
+
+    fun setUpdateWifiOnly(wifiOnly: Boolean) {
+        viewModelScope.launch { settingsRepository.setUpdateWifiOnly(wifiOnly) }
+    }
+
+    fun checkForUpdatesManually() {
+        updateManager.checkManually()
     }
 
     fun setBlockScreenshots(enabled: Boolean) {

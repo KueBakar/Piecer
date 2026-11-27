@@ -19,6 +19,12 @@ captures/
 # Keystores & secrets
 *.jks
 *.keystore
+keystore.properties
+
+# Build outputs
+*.apk
+*.aab
+dist/
 
 # Logs
 *.log

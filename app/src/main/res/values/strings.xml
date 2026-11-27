@@ -552,4 +552,55 @@
     <string name="wrapped_streak_days">%1$d hari</string>
     <string name="wrapped_card_streak_sub">Hari berturut-turut mencatat transaksi</string>
     <string name="wrapped_closing_title">Terima kasih sudah mencatat bersama</string>
+
+    <!-- Tentang PIECER & Pembaruan -->
+    <string name="settings_section_update">Pembaruan</string>
+    <string name="settings_update_current_version">Versi saat ini: %1$s (%2$d)</string>
+    <string name="settings_update_check_button">Cek pembaruan</string>
+    <string name="settings_update_checking">Memeriksa pembaruan…</string>
+    <string name="settings_update_last_check_never">Belum pernah diperiksa</string>
+    <string name="settings_update_last_check_fmt">Terakhir dicek: %1$s · %2$s</string>
+    <string name="settings_update_auto_title">Cek pembaruan otomatis</string>
+    <string name="settings_update_auto_desc">Periksa versi baru maksimal sekali setiap 24 jam</string>
+    <string name="settings_update_wifi_only_title">Unduh hanya lewat Wi-Fi</string>
+    <string name="settings_update_wifi_only_desc">Hindari memakai kuota seluler saat mengunduh APK</string>
+    <string name="settings_update_disabled_build">Pembaruan dalam aplikasi hanya aktif pada build rilis</string>
+    <string name="settings_about_title">Tentang PIECER</string>
+    <string name="settings_about_desc">Versi, privasi, tautan, dan lisensi</string>
+
+    <string name="about_title">Tentang PIECER</string>
+    <string name="about_app_name">PIECER</string>
+    <string name="about_version_fmt">Versi %1$s (build %2$d)</string>
+    <string name="about_slogan">Datamu tinggal di HP-mu</string>
+    <string name="about_summary">PIECER 100%% gratis, tanpa iklan, tanpa akun, dan tanpa server. Semua catatan keuanganmu disimpan lokal di perangkat. Satu-satunya koneksi jaringan adalah pemeriksaan pembaruan aplikasi ke GitHub.</string>
+    <string name="about_links_header">Tautan</string>
+    <string name="about_link_source">Kode sumber</string>
+    <string name="about_link_source_desc">Lihat kode sumber &amp; rilis di GitHub</string>
+    <string name="about_link_telegram">Channel Telegram</string>
+    <string name="about_link_telegram_desc">Info rilis dan pengumuman resmi</string>
+    <string name="about_link_donate">Dukung developer</string>
+    <string name="about_link_donate_desc">Bantu pengembangan PIECER tetap gratis</string>
+    <string name="about_link_open_error">Tidak dapat membuka tautan di browser.</string>
+    <string name="about_licenses_header">Lisensi Pihak Ketiga</string>
+    <string name="about_licenses_body">• PIECER — GNU General Public License v3.0 or later (GPL-3.0-or-later)\n• Font Plus Jakarta Sans (Tokotype) — SIL Open Font License 1.1\n• Jetpack Compose, AndroidX Core, Lifecycle, Navigation, Room, DataStore, Biometric — Apache License 2.0\n• Dagger Hilt — Apache License 2.0\n• Kotlin &amp; Kotlinx Coroutines — Apache License 2.0</string>
+
+    <string name="update_consent_title">Izinkan cek pembaruan otomatis?</string>
+    <string name="update_consent_message">PIECER hanya menghubungi GitHub untuk memeriksa versi baru. Aplikasi tidak mengirim data pribadi atau analitik apa pun (GitHub tetap dapat melihat alamat IP perangkat saat permintaan berlangsung). Pengaturan ini bisa diubah kapan saja di Pengaturan.</string>
+    <string name="update_consent_allow">Aktifkan</string>
+    <string name="update_consent_decline">Nanti saja</string>
+
+    <string name="update_home_banner">Versi %1$s tersedia · Lihat</string>
+    <string name="update_dialog_title">Pembaruan tersedia: v%1$s</string>
+    <string name="update_dialog_size">Ukuran unduhan: %1$s</string>
+    <string name="update_dialog_notes_label">Catatan rilis</string>
+    <string name="update_dialog_notes_empty">Perbaikan dan peningkatan stabilitas.</string>
+    <string name="update_dialog_action_update">Perbarui</string>
+    <string name="update_dialog_action_later">Nanti</string>
+    <string name="update_dialog_action_cancel">Batal</string>
+    <string name="update_dialog_action_retry">Coba lagi</string>
+    <string name="update_dialog_action_open_settings">Buka Pengaturan</string>
+    <string name="update_dialog_downloading">Mengunduh… %1$s / %2$s (%3$d%%)</string>
+    <string name="update_dialog_verifying">Memverifikasi integritas &amp; tanda tangan APK…</string>
+    <string name="update_dialog_installing">Menyiapkan pemasangan…</string>
+    <string name="update_dialog_needs_permission">Izinkan pemasangan aplikasi dari sumber ini di Pengaturan Android untuk melanjutkan pembaruan.</string>
 </resources>

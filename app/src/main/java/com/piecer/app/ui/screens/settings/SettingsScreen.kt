@@ -63,6 +63,9 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.piecer.app.BuildConfig
 import com.piecer.app.R
+import com.piecer.app.util.update.UpdatePhase
+import java.text.DateFormat
+import java.util.Date
 import com.piecer.app.data.preferences.ThemeMode
 import com.piecer.app.ui.components.PiecerCard
 import com.piecer.app.ui.components.PiecerCardVariant
@@ -80,10 +83,12 @@ fun SettingsScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     onPinConfigured: () -> Unit = {},
+    onOpenAbout: () -> Unit = {},
     onOpenCrashReport: () -> Unit = {},
     onReplaySplash: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val updateState by viewModel.updateState.collectAsStateWithLifecycle()
     val settings = uiState.settings
     val spacing = PiecerTheme.spacing
     val colors = PiecerTheme.colors
@@ -425,6 +430,86 @@ fun SettingsScreen(
                             title = stringResource(id = R.string.settings_csv_title),
                             subtitle = stringResource(id = R.string.settings_csv_desc),
                             onClick = { showCsvRangeDialog = true }
+                        )
+                    }
+                }
+            }
+
+            item {
+                SectionHeader(text = stringResource(id = R.string.settings_section_update))
+            }
+
+            item {
+                val isChecking = updateState.phase is UpdatePhase.Checking
+                val lastCheckText = if (settings.lastUpdateCheckMillis > 0L) {
+                    val timeText = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
+                        .format(Date(settings.lastUpdateCheckMillis))
+                    stringResource(
+                        id = R.string.settings_update_last_check_fmt,
+                        timeText,
+                        settings.lastUpdateCheckStatus.ifBlank { "-" }
+                    )
+                } else {
+                    stringResource(id = R.string.settings_update_last_check_never)
+                }
+
+                PiecerCard(variant = PiecerCardVariant.Light) {
+                    Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                        Text(
+                            text = stringResource(
+                                id = R.string.settings_update_current_version,
+                                BuildConfig.VERSION_NAME,
+                                BuildConfig.VERSION_CODE
+                            ),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colorScheme.onSurface
+                        )
+                        Text(
+                            text = lastCheckText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colorScheme.onSurfaceVariant
+                        )
+                        if (!updateState.isFeatureEnabled) {
+                            Text(
+                                text = stringResource(id = R.string.settings_update_disabled_build),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colorScheme.onSurfaceVariant
+                            )
+                        }
+                        OutlinedButton(
+                            onClick = viewModel::checkForUpdatesManually,
+                            enabled = updateState.isFeatureEnabled && !isChecking,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = stringResource(
+                                    id = if (isChecking) {
+                                        R.string.settings_update_checking
+                                    } else {
+                                        R.string.settings_update_check_button
+                                    }
+                                )
+                            )
+                        }
+                        HorizontalDivider(color = colorScheme.outlineVariant)
+                        SettingsSwitchRow(
+                            title = stringResource(id = R.string.settings_update_auto_title),
+                            subtitle = stringResource(id = R.string.settings_update_auto_desc),
+                            checked = settings.autoUpdateEnabled,
+                            onCheckedChange = viewModel::setAutoUpdateEnabled
+                        )
+                        HorizontalDivider(color = colorScheme.outlineVariant)
+                        SettingsSwitchRow(
+                            title = stringResource(id = R.string.settings_update_wifi_only_title),
+                            subtitle = stringResource(id = R.string.settings_update_wifi_only_desc),
+                            checked = settings.updateWifiOnly,
+                            onCheckedChange = viewModel::setUpdateWifiOnly
+                        )
+                        HorizontalDivider(color = colorScheme.outlineVariant)
+                        SettingsActionRow(
+                            title = stringResource(id = R.string.settings_about_title),
+                            subtitle = stringResource(id = R.string.settings_about_desc),
+                            onClick = onOpenAbout
                         )
                     }
                 }

@@ -37,7 +37,12 @@ data class AppSettings(
     val onboardingCompleted: Boolean = false,
     val failedPinAttempts: Int = 0,
     val pinLockoutUntilMillis: Long = 0L,
-    val piecesEnabled: Boolean = false
+    val piecesEnabled: Boolean = false,
+    val autoUpdateEnabled: Boolean = false,
+    val updateConsentShown: Boolean = false,
+    val updateWifiOnly: Boolean = false,
+    val lastUpdateCheckMillis: Long = 0L,
+    val lastUpdateCheckStatus: String = ""
 ) {
     val isPinEnabled: Boolean get() = !pinHash.isNullOrBlank() && !pinSalt.isNullOrBlank()
 }
@@ -66,6 +71,11 @@ class SettingsRepository @Inject constructor(
         val FAILED_PIN_ATTEMPTS = intPreferencesKey("failed_pin_attempts")
         val PIN_LOCKOUT_UNTIL = longPreferencesKey("pin_lockout_until")
         val PIECES_ENABLED = booleanPreferencesKey("pieces_enabled")
+        val AUTO_UPDATE_ENABLED = booleanPreferencesKey("auto_update_enabled")
+        val UPDATE_CONSENT_SHOWN = booleanPreferencesKey("update_consent_shown")
+        val UPDATE_WIFI_ONLY = booleanPreferencesKey("update_wifi_only")
+        val LAST_UPDATE_CHECK_MILLIS = longPreferencesKey("last_update_check_millis")
+        val LAST_UPDATE_CHECK_STATUS = stringPreferencesKey("last_update_check_status")
     }
 
     val settingsFlow: Flow<AppSettings> = context.settingsDataStore.data.map { prefs ->
@@ -86,7 +96,12 @@ class SettingsRepository @Inject constructor(
             onboardingCompleted = prefs[Keys.ONBOARDING_COMPLETED] ?: false,
             failedPinAttempts = prefs[Keys.FAILED_PIN_ATTEMPTS] ?: 0,
             pinLockoutUntilMillis = prefs[Keys.PIN_LOCKOUT_UNTIL] ?: 0L,
-            piecesEnabled = prefs[Keys.PIECES_ENABLED] ?: false
+            piecesEnabled = prefs[Keys.PIECES_ENABLED] ?: false,
+            autoUpdateEnabled = prefs[Keys.AUTO_UPDATE_ENABLED] ?: false,
+            updateConsentShown = prefs[Keys.UPDATE_CONSENT_SHOWN] ?: false,
+            updateWifiOnly = prefs[Keys.UPDATE_WIFI_ONLY] ?: false,
+            lastUpdateCheckMillis = prefs[Keys.LAST_UPDATE_CHECK_MILLIS] ?: 0L,
+            lastUpdateCheckStatus = prefs[Keys.LAST_UPDATE_CHECK_STATUS] ?: ""
         )
     }
 
@@ -149,6 +164,28 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setPiecesEnabled(enabled: Boolean) {
         context.settingsDataStore.edit { it[Keys.PIECES_ENABLED] = enabled }
+    }
+
+    suspend fun setAutoUpdateEnabled(enabled: Boolean) {
+        context.settingsDataStore.edit { it[Keys.AUTO_UPDATE_ENABLED] = enabled }
+    }
+
+    suspend fun setUpdateConsentAnswered(autoUpdateEnabled: Boolean) {
+        context.settingsDataStore.edit {
+            it[Keys.UPDATE_CONSENT_SHOWN] = true
+            it[Keys.AUTO_UPDATE_ENABLED] = autoUpdateEnabled
+        }
+    }
+
+    suspend fun setUpdateWifiOnly(wifiOnly: Boolean) {
+        context.settingsDataStore.edit { it[Keys.UPDATE_WIFI_ONLY] = wifiOnly }
+    }
+
+    suspend fun recordUpdateCheck(timestampMillis: Long, status: String) {
+        context.settingsDataStore.edit {
+            it[Keys.LAST_UPDATE_CHECK_MILLIS] = timestampMillis
+            it[Keys.LAST_UPDATE_CHECK_STATUS] = status
+        }
     }
 
     suspend fun updatePinAttempts(attempts: Int, lockoutUntilMillis: Long) {

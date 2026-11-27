@@ -1,0 +1,9 @@
+{
+  "versionCode": 1,
+  "versionName": "1.0.0",
+  "apkUrl": "https://github.com/KueBakar/Piecer/releases/download/v1.0.0/PIECER-v1.0.0.apk",
+  "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "sizeBytes": 1,
+  "minSdk": 26,
+  "releaseNotes": "Rilis awal PIECER."
+}

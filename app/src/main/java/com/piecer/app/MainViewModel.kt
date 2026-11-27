@@ -9,6 +9,8 @@ import com.piecer.app.util.AppLockPolicy
 import com.piecer.app.util.BreadcrumbLog
 import com.piecer.app.util.PinHasher
 import com.piecer.app.util.RecurringProcessor
+import com.piecer.app.util.update.UpdateManager
+import com.piecer.app.util.update.UpdateUiState
 import dagger.Lazy
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -24,8 +26,11 @@ import javax.inject.Inject
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
-    private val recurringProcessor: Lazy<RecurringProcessor>
+    private val recurringProcessor: Lazy<RecurringProcessor>,
+    private val updateManager: UpdateManager
 ) : ViewModel() {
+
+    val updateState: StateFlow<UpdateUiState> = updateManager.state
 
     val settings: StateFlow<AppSettings> = settingsRepository.settingsFlow.stateIn(
         scope = viewModelScope,
@@ -62,6 +67,7 @@ class MainViewModel @Inject constructor(
             }
             _isAppReady.value = true
             runCatching { recurringProcessor.get().processDueAndNotify() }
+            updateManager.checkInBackgroundIfDue()
         }
     }
 
@@ -103,7 +109,25 @@ class MainViewModel @Inject constructor(
             _pinError.value = null
             BreadcrumbLog.record("LOCK", "State=LOCKED reason=foreground_timeout", syncWrite = true)
         }
+        updateManager.checkInBackgroundIfDue()
     }
+
+    fun answerUpdateConsent(allowAutoUpdate: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setUpdateConsentAnswered(allowAutoUpdate)
+            if (allowAutoUpdate) {
+                updateManager.checkInBackgroundIfDue()
+            }
+        }
+    }
+
+    fun openUpdateDialog() = updateManager.openUpdateDialog()
+    fun dismissUpdateDialog() = updateManager.dismissUpdateDialog()
+    fun startUpdateDownload() = updateManager.startDownload(settings.value.updateWifiOnly)
+    fun cancelUpdateDownload() = updateManager.cancelDownload()
+    fun createUnknownSourcesIntent() = updateManager.createUnknownSourcesIntent()
+    fun retryInstallAfterPermission() = updateManager.retryInstallAfterPermission()
+    fun consumePendingConfirmIntent() = updateManager.consumePendingConfirmIntent()
 
     fun onAppStop(isChangingConfigurations: Boolean) {
         if (AppLockPolicy.shouldRecordBackgroundTimestamp(

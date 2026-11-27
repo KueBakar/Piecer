@@ -9,12 +9,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.sp
 import com.piecer.app.R
 import com.piecer.app.ui.theme.LocalReduceMotion
 import com.piecer.app.ui.theme.PiecerTheme
+import com.piecer.app.ui.theme.PlusJakartaSans
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.util.Locale
@@ -76,10 +82,26 @@ fun AmountText(
         formatRupiah(displayAmount)
     }
 
+    val baseFontSize = if (style.fontSize != TextUnit.Unspecified) style.fontSize else 16.sp
+    var scaledFontSize by remember(amount, isHidden, baseFontSize) {
+        mutableStateOf(baseFontSize)
+    }
+
     Text(
         text = displayText,
         modifier = modifier,
         color = textColor,
-        style = style
+        style = style.copy(
+            fontFamily = style.fontFamily ?: PlusJakartaSans,
+            fontSize = scaledFontSize
+        ),
+        maxLines = 1,
+        softWrap = false,
+        onTextLayout = { result ->
+            if (result.didOverflowWidth && scaledFontSize > 10.sp) {
+                val nextSize = (scaledFontSize.value * 0.9f).coerceAtLeast(10f)
+                scaledFontSize = nextSize.sp
+            }
+        }
     )
 }

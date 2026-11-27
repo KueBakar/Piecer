@@ -55,6 +55,8 @@ fun HomeScreen(
     onOpenBudgets: () -> Unit,
     onOpenPieces: () -> Unit = {},
     onOpenWrapped: () -> Unit = {},
+    availableUpdateVersion: String? = null,
+    onOpenUpdateDialog: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -70,6 +72,32 @@ fun HomeScreen(
         ),
         verticalArrangement = Arrangement.spacedBy(spacing.lg)
     ) {
+        if (!availableUpdateVersion.isNullOrBlank()) {
+            item {
+                androidx.compose.material3.Surface(
+                    onClick = onOpenUpdateDialog,
+                    shape = MaterialTheme.shapes.large,
+                    color = colorScheme.surface
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = spacing.md, vertical = spacing.sm),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = stringResource(
+                                id = R.string.update_home_banner,
+                                availableUpdateVersion
+                            ),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+        }
         if (uiState.remainingDaysInMonth <= 1 && uiState.hasAnyTransaction) {
             item {
                 androidx.compose.material3.Surface(

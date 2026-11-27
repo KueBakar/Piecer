@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PIECER — Datamu tinggal di HP-mu</title>
+  <style>
+    :root {
+      --bg: #0D0D0F;
+      --surface: #1C1C1E;
+      --surface-alt: #2C2C2E;
+      --text: #F4F4F5;
+      --muted: #8E8E93;
+      --border: #2C2C2E;
+      --accent: #34D399;
+      --btn-bg: #FFFFFF;
+      --btn-text: #0D0D0F;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 24px 16px 64px;
+    }
+    .container { max-width: 760px; margin: 0 auto; }
+    header {
+      padding: 40px 24px;
+      background: var(--surface);
+      border-radius: 24px;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 999px;
+      background: var(--surface-alt);
+      color: var(--accent);
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    h1 { font-size: 2.25rem; letter-spacing: -0.02em; margin-bottom: 8px; }
+    .slogan { color: var(--muted); font-size: 1.1rem; margin-bottom: 24px; }
+    .cta {
+      display: inline-block;
+      background: var(--btn-bg);
+      color: var(--btn-text);
+      text-decoration: none;
+      font-weight: 600;
+      padding: 14px 28px;
+      border-radius: 16px;
+      transition: opacity 0.15s ease;
+    }
+    .cta:hover { opacity: 0.9; }
+    .cta-note { margin-top: 12px; font-size: 0.85rem; color: var(--muted); }
+    .card {
+      background: var(--surface);
+      border-radius: 24px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    h2 { font-size: 1.25rem; margin-bottom: 14px; }
+    ul, ol { padding-left: 20px; color: var(--text); }
+    li { margin-bottom: 8px; }
+    .muted { color: var(--muted); }
+    footer {
+      text-align: center;
+      margin-top: 32px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    footer a { color: var(--text); text-decoration: underline; }
+    @media (max-width: 540px) {
+      header { padding: 28px 16px; }
+      h1 { font-size: 1.85rem; }
+      .card { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <header>
+      <div class="badge">100% Gratis · Offline-First · Tanpa Iklan</div>
+      <h1>PIECER</h1>
+      <p class="slogan">Datamu tinggal di HP-mu.</p>
+      <a class="cta" href="https://github.com/KueBakar/Piecer/releases/latest">Unduh APK</a>
+      <p class="cta-note">Android 8.0 (API 26) ke atas · Tanpa akun &amp; tanpa pelacak</p>
+    </header>
+
+    <section class="card">
+      <h2>Fitur Utama</h2>
+      <ul>
+        <li>Catat pemasukan, pengeluaran, dan transfer antar dompet dengan cepat.</li>
+        <li>Banyak dompet (tunai, rekening bank, e-wallet) dengan nominal Rupiah presisi.</li>
+        <li>Anggaran bulanan, target tabungan, Pieces, utang/piutang, dan split bill.</li>
+        <li>Statistik pengeluaran, kekayaan bersih, transaksi berulang, dan widget.</li>
+        <li>Kunci PIN &amp; biometrik, blokir tangkapan layar, serta backup JSON &amp; ekspor CSV lokal.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>Cara Memasang</h2>
+      <ol>
+        <li>Ketuk tombol <strong>Unduh APK</strong> di atas untuk mengunduh berkas rilis terbaru dari GitHub.</li>
+        <li>Buka berkas <code>PIECER-v&lt;versi&gt;.apk</code> di HP Android Anda.</li>
+        <li>Aktifkan izin <strong>Izinkan dari sumber ini</strong> jika diminta oleh sistem.</li>
+        <li>Jika muncul peringatan Google Play Protect karena aplikasi dipasang di luar Play Store, pilih <strong>Tetap pasang</strong>.</li>
+      </ol>
+    </section>
+
+    <section class="card">
+      <h2>Privasi</h2>
+      <p class="muted">
+        Semua catatan keuangan Anda tersimpan lokal di perangkat. Tidak ada server backend, akun, iklan, maupun pelacak. Satu-satunya koneksi jaringan adalah pemeriksaan pembaruan ke GitHub yang bersifat opsional dan dapat dimatikan kapan saja.
+      </p>
+    </section>
+
+    <footer>
+      <p>
+        <a href="https://github.com/KueBakar/Piecer/blob/main/PRIVACY.md">Kebijakan Privasi (PRIVACY.md)</a>
+        ·
+        <a href="https://github.com/KueBakar/Piecer">Kode Sumber (GPL-3.0-or-later)</a>
+      </p>
+    </footer>
+  </main>
+</body>
+</html>

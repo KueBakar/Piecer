@@ -68,9 +68,12 @@ import com.piecer.app.ui.screens.pieces.PiecesViewModel
 import com.piecer.app.ui.screens.recurring.RecurringScreen
 import com.piecer.app.ui.screens.recurring.RecurringViewModel
 import com.piecer.app.ui.screens.security.LockScreen
+import com.piecer.app.ui.screens.settings.AboutScreen
 import com.piecer.app.ui.screens.settings.CrashReportScreen
 import com.piecer.app.ui.screens.settings.SettingsScreen
 import com.piecer.app.ui.screens.settings.SettingsViewModel
+import com.piecer.app.ui.components.UpdateAvailableDialog
+import com.piecer.app.ui.components.UpdateConsentDialog
 import com.piecer.app.ui.screens.splitbill.SplitBillScreen
 import com.piecer.app.ui.screens.splitbill.SplitBillViewModel
 import com.piecer.app.ui.screens.statistics.StatisticsScreen
@@ -146,7 +149,14 @@ class MainActivity : FragmentActivity() {
             val settings by mainViewModel.settings.collectAsStateWithLifecycle()
             val isLocked by mainViewModel.isLocked.collectAsStateWithLifecycle()
             val pinError by mainViewModel.pinError.collectAsStateWithLifecycle()
+            val updateState by mainViewModel.updateState.collectAsStateWithLifecycle()
             val wrongPinMessage = stringResource(id = R.string.lock_wrong_pin)
+
+            LaunchedEffect(updateState.pendingConfirmIntent) {
+                val confirmIntent = updateState.pendingConfirmIntent ?: return@LaunchedEffect
+                runCatching { startActivity(confirmIntent) }
+                mainViewModel.consumePendingConfirmIntent()
+            }
 
             val darkTheme = when (settings.themeMode) {
                 ThemeMode.LIGHT -> false
@@ -244,7 +254,9 @@ class MainActivity : FragmentActivity() {
                                 onPinConfigured = mainViewModel::markSessionUnlocked,
                                 openCrashReportRequest = openCrashReportRequest,
                                 onCrashReportRequestHandled = { openCrashReportRequest = false },
-                                onReplaySplash = mainViewModel::replaySplash
+                                onReplaySplash = mainViewModel::replaySplash,
+                                availableUpdateVersion = updateState.availableUpdate?.versionName,
+                                onOpenUpdateDialog = mainViewModel::openUpdateDialog
                             )
 
                             if (isLocked && settings.isPinEnabled) {
@@ -297,6 +309,32 @@ class MainActivity : FragmentActivity() {
                                     Text(text = stringResource(id = R.string.debug_crash_dialog_dismiss))
                                 }
                             }
+                        )
+                    }
+
+                    if (BuildConfig.UPDATE_ENABLED &&
+                        settings.onboardingCompleted &&
+                        !settings.updateConsentShown &&
+                        !showSplash &&
+                        (!isLocked || !settings.isPinEnabled)
+                    ) {
+                        UpdateConsentDialog(
+                            onAllow = { mainViewModel.answerUpdateConsent(true) },
+                            onDecline = { mainViewModel.answerUpdateConsent(false) }
+                        )
+                    }
+
+                    if (updateState.showUpdateDialog) {
+                        UpdateAvailableDialog(
+                            state = updateState,
+                            reduceMotion = settings.reduceMotion,
+                            onStartDownload = mainViewModel::startUpdateDownload,
+                            onCancelDownload = mainViewModel::cancelUpdateDownload,
+                            onDismiss = mainViewModel::dismissUpdateDialog,
+                            onOpenUnknownSources = {
+                                runCatching { startActivity(mainViewModel.createUnknownSourcesIntent()) }
+                            },
+                            onRetryInstall = mainViewModel::retryInstallAfterPermission
                         )
                     }
                 }
@@ -454,7 +492,9 @@ fun PiecerApp(
     onPinConfigured: () -> Unit,
     openCrashReportRequest: Boolean = false,
     onCrashReportRequestHandled: () -> Unit = {},
-    onReplaySplash: () -> Unit = {}
+    onReplaySplash: () -> Unit = {},
+    availableUpdateVersion: String? = null,
+    onOpenUpdateDialog: () -> Unit = {}
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -493,6 +533,7 @@ fun PiecerApp(
         currentRoute == PiecerRoutes.SPLIT_BILL ||
         currentRoute == PiecerRoutes.NET_WORTH ||
         currentRoute == PiecerRoutes.SETTINGS ||
+        currentRoute == PiecerRoutes.ABOUT ||
         currentRoute == PiecerRoutes.CRASH_REPORT ||
         currentRoute == PiecerRoutes.WRAPPED
 
@@ -569,7 +610,9 @@ fun PiecerApp(
                     onEditTransaction = openEditTransaction,
                     onOpenBudgets = { navController.navigate(PiecerRoutes.BUDGETS) },
                     onOpenPieces = { navController.navigate(PiecerRoutes.PIECES) },
-                    onOpenWrapped = { navController.navigate(PiecerRoutes.WRAPPED) }
+                    onOpenWrapped = { navController.navigate(PiecerRoutes.WRAPPED) },
+                    availableUpdateVersion = availableUpdateVersion,
+                    onOpenUpdateDialog = onOpenUpdateDialog
                 )
             }
             composable(PiecerTab.Transactions.route) {
@@ -691,6 +734,11 @@ fun PiecerApp(
                     viewModel = settingsViewModel,
                     onBack = { navController.popBackStack() },
                     onPinConfigured = onPinConfigured,
+                    onOpenAbout = {
+                        navController.navigate(PiecerRoutes.ABOUT) {
+                            launchSingleTop = true
+                        }
+                    },
                     onOpenCrashReport = {
                         if (BuildConfig.CRASH_DIAGNOSTICS_ENABLED) {
                             navController.navigate(PiecerRoutes.CRASH_REPORT) {
@@ -703,6 +751,11 @@ fun PiecerApp(
                             onReplaySplash()
                         }
                     }
+                )
+            }
+            composable(PiecerRoutes.ABOUT) {
+                AboutScreen(
+                    onBack = { navController.popBackStack() }
                 )
             }
             if (BuildConfig.CRASH_DIAGNOSTICS_ENABLED) {

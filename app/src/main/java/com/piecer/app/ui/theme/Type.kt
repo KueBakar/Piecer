@@ -2,21 +2,19 @@ package com.piecer.app.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.piecer.app.R
 
-/**
- * Menggunakan font bawaan sistem untuk saat ini.
- * Untuk beralih ke Plus Jakarta Sans nanti, ganti dengan:
- * FontFamily(
- *     Font(R.font.plus_jakarta_sans_regular, FontWeight.Normal),
- *     Font(R.font.plus_jakarta_sans_medium, FontWeight.Medium),
- *     Font(R.font.plus_jakarta_sans_semibold, FontWeight.SemiBold),
- *     Font(R.font.plus_jakarta_sans_bold, FontWeight.Bold)
- * )
- */
-val PlusJakartaSans: FontFamily = FontFamily.Default
+val PlusJakartaSans: FontFamily = FontFamily(
+    Font(R.font.plus_jakarta_sans_regular, FontWeight.Normal),
+    Font(R.font.plus_jakarta_sans_medium, FontWeight.Medium),
+    Font(R.font.plus_jakarta_sans_semibold, FontWeight.SemiBold),
+    Font(R.font.plus_jakarta_sans_bold, FontWeight.Bold),
+    Font(R.font.plus_jakarta_sans_extrabold, FontWeight.ExtraBold)
+)
 
 val PiecerTypography = Typography(
     displayLarge = TextStyle(
@@ -25,6 +23,20 @@ val PiecerTypography = Typography(
         fontSize = 36.sp,
         lineHeight = 44.sp,
         letterSpacing = (-0.5).sp
+    ),
+    displayMedium = TextStyle(
+        fontFamily = PlusJakartaSans,
+        fontWeight = FontWeight.Bold,
+        fontSize = 32.sp,
+        lineHeight = 40.sp,
+        letterSpacing = (-0.4).sp
+    ),
+    displaySmall = TextStyle(
+        fontFamily = PlusJakartaSans,
+        fontWeight = FontWeight.Bold,
+        fontSize = 28.sp,
+        lineHeight = 36.sp,
+        letterSpacing = (-0.3).sp
     ),
     headlineLarge = TextStyle(
         fontFamily = PlusJakartaSans,
@@ -40,6 +52,13 @@ val PiecerTypography = Typography(
         lineHeight = 28.sp,
         letterSpacing = (-0.2).sp
     ),
+    headlineSmall = TextStyle(
+        fontFamily = PlusJakartaSans,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 20.sp,
+        lineHeight = 26.sp,
+        letterSpacing = (-0.1).sp
+    ),
     titleLarge = TextStyle(
         fontFamily = PlusJakartaSans,
         fontWeight = FontWeight.SemiBold,
@@ -52,6 +71,12 @@ val PiecerTypography = Typography(
         fontSize = 16.sp,
         lineHeight = 22.sp
     ),
+    titleSmall = TextStyle(
+        fontFamily = PlusJakartaSans,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 14.sp,
+        lineHeight = 20.sp
+    ),
     bodyLarge = TextStyle(
         fontFamily = PlusJakartaSans,
         fontWeight = FontWeight.Normal,
@@ -63,6 +88,12 @@ val PiecerTypography = Typography(
         fontWeight = FontWeight.Normal,
         fontSize = 14.sp,
         lineHeight = 20.sp
+    ),
+    bodySmall = TextStyle(
+        fontFamily = PlusJakartaSans,
+        fontWeight = FontWeight.Normal,
+        fontSize = 12.sp,
+        lineHeight = 16.sp
     ),
     labelLarge = TextStyle(
         fontFamily = PlusJakartaSans,
