@@ -1,9 +1,9 @@
-{
-  "versionCode": 1,
-  "versionName": "1.0.0",
-  "apkUrl": "https://github.com/KueBakar/Piecer/releases/download/v1.0.0/PIECER-v1.0.0.apk",
-  "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
-  "sizeBytes": 1,
-  "minSdk": 26,
-  "releaseNotes": "Rilis awal PIECER."
+﻿{
+    "versionCode":  1,
+    "versionName":  "1.0.0",
+    "apkUrl":  "https://github.com/KueBakar/Piecer/releases/download/v1.0.0/PIECER-v1.0.0.apk",
+    "sha256":  "12d664be4e68156850e821c71e342c536879c95647d5b131dff45b356116a863",
+    "sizeBytes":  3355436,
+    "minSdk":  26,
+    "releaseNotes":  "Perbaikan dan peningkatan stabilitas."
 }
