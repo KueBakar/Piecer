@@ -19,13 +19,25 @@ android {
     }
 
     buildTypes {
+        debug {
+            buildConfigField("boolean", "CRASH_DIAGNOSTICS_ENABLED", "true")
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            buildConfigField("boolean", "CRASH_DIAGNOSTICS_ENABLED", "false")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        create("staging") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            applicationIdSuffix = ".staging"
+            versionNameSuffix = "-staging"
+            matchingFallbacks += listOf("release")
+            buildConfigField("boolean", "CRASH_DIAGNOSTICS_ENABLED", "true")
         }
     }
 

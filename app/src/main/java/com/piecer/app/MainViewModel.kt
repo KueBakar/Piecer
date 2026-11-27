@@ -9,7 +9,9 @@ import com.piecer.app.util.AppLockPolicy
 import com.piecer.app.util.BreadcrumbLog
 import com.piecer.app.util.PinHasher
 import com.piecer.app.util.RecurringProcessor
+import dagger.Lazy
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -22,7 +24,7 @@ import javax.inject.Inject
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
-    private val recurringProcessor: RecurringProcessor
+    private val recurringProcessor: Lazy<RecurringProcessor>
 ) : ViewModel() {
 
     val settings: StateFlow<AppSettings> = settingsRepository.settingsFlow.stateIn(
@@ -49,17 +51,17 @@ class MainViewModel @Inject constructor(
     private var consecutiveBiometricErrors = 0
 
     init {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val initial = settingsRepository.settingsFlow.first()
             if (!hasInitializedLock) {
                 hasInitializedLock = true
                 if (initial.isPinEnabled) {
                     _isLocked.value = true
-                    BreadcrumbLog.record("LOCK", "State=LOCKED reason=cold_start_pin_enabled", syncWrite = true)
+                    BreadcrumbLog.record("LOCK", "State=LOCKED reason=cold_start_pin_enabled")
                 }
             }
             _isAppReady.value = true
-            runCatching { recurringProcessor.processDueAndNotify() }
+            runCatching { recurringProcessor.get().processDueAndNotify() }
         }
     }
 

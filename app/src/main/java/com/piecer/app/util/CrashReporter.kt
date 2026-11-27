@@ -62,7 +62,7 @@ object CrashReporter {
     @Volatile
     private var installed = false
 
-    fun install(context: Context, enabled: Boolean = BuildConfig.DEBUG) {
+    fun install(context: Context, enabled: Boolean = BuildConfig.CRASH_DIAGNOSTICS_ENABLED) {
         if (!enabled || installed) return
         installed = true
         val filesDir = context.filesDir
@@ -84,7 +84,7 @@ object CrashReporter {
     }
 
     fun hasUnseenCrashReport(context: Context): Boolean {
-        if (!BuildConfig.DEBUG) return false
+        if (!BuildConfig.CRASH_DIAGNOSTICS_ENABLED) return false
         return runCatching {
             val flagFile = File(context.filesDir, UNSEEN_FLAG_NAME)
             val reportFile = File(context.filesDir, REPORT_FILE_NAME)
@@ -93,7 +93,7 @@ object CrashReporter {
     }
 
     fun markCrashReportSeen(context: Context) {
-        if (!BuildConfig.DEBUG) return
+        if (!BuildConfig.CRASH_DIAGNOSTICS_ENABLED) return
         runCatching {
             val flagFile = File(context.filesDir, UNSEEN_FLAG_NAME)
             if (flagFile.exists()) {
@@ -103,7 +103,7 @@ object CrashReporter {
     }
 
     fun readCrashReport(context: Context): String? {
-        if (!BuildConfig.DEBUG) return null
+        if (!BuildConfig.CRASH_DIAGNOSTICS_ENABLED) return null
         return runCatching {
             val reportFile = File(context.filesDir, REPORT_FILE_NAME)
             if (reportFile.exists()) {
@@ -115,7 +115,7 @@ object CrashReporter {
     }
 
     fun clearCrashReport(context: Context) {
-        if (!BuildConfig.DEBUG) return
+        if (!BuildConfig.CRASH_DIAGNOSTICS_ENABLED) return
         runCatching {
             File(context.filesDir, REPORT_FILE_NAME).delete()
             File(context.filesDir, UNSEEN_FLAG_NAME).delete()
@@ -127,10 +127,9 @@ object CrashReporter {
             PrintWriter(sw).use { pw -> throwable.printStackTrace(pw) }
         }.toString()
 
-        BreadcrumbLog.record(
+        BreadcrumbLog.recordCrashAndFlushSync(
             category = "CRASH",
-            message = "${throwable::class.java.simpleName}: ${throwable.message ?: "no message"} on ${thread.name}",
-            syncWrite = true
+            message = "${throwable::class.java.simpleName}: ${throwable.message ?: "no message"} on ${thread.name}"
         )
 
         val report = CrashReportFormatter.format(

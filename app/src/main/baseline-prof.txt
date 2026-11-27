@@ -1,0 +1,3 @@
+# Baseline Profile manual untuk PIECER (mempercepat startup & animasi splash di ART)
+HSPLcom/piecer/app/**;->**(**)**
+Lcom/piecer/app/**

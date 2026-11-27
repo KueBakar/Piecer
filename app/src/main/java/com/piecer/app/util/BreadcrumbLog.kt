@@ -5,6 +5,8 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 /**
  * Menyimpan buffer ring jejak kejadian (maksimal [maxEntries] entri terakhir)
@@ -39,6 +41,12 @@ class BreadcrumbStore(
             if (syncWrite) {
                 persistLocked()
             }
+        }
+    }
+
+    fun flushSync() {
+        synchronized(lock) {
+            persistLocked()
         }
     }
 
@@ -98,10 +106,16 @@ class BreadcrumbStore(
 }
 
 /**
- * Pencatat jejak kejadian global (hanya aktif di build debug).
+ * Pencatat jejak kejadian global (aktif di build diagnostik).
+ * Penulisan kejadian biasa dijalankan di executor satu-thread agar tidak memblokir main thread;
+ * hanya flush sinkron saat terjadi crash.
  */
 object BreadcrumbLog {
     private const val FILE_NAME = "debug_breadcrumbs.log"
+
+    private val ioExecutor: ExecutorService = Executors.newSingleThreadExecutor { runnable ->
+        Thread(runnable, "piecer-breadcrumb-io").apply { isDaemon = true }
+    }
 
     @Volatile
     var isEnabled: Boolean = false
@@ -112,17 +126,32 @@ object BreadcrumbLog {
 
     fun init(filesDir: File, enabled: Boolean) {
         isEnabled = enabled
-        store = if (enabled) {
-            BreadcrumbStore(File(filesDir, FILE_NAME))
+        if (enabled) {
+            ioExecutor.execute {
+                runCatching {
+                    store = BreadcrumbStore(File(filesDir, FILE_NAME))
+                }
+            }
         } else {
-            null
+            store = null
         }
     }
 
-    fun record(category: String, message: String, syncWrite: Boolean = true) {
+    @Suppress("UNUSED_PARAMETER")
+    fun record(category: String, message: String, syncWrite: Boolean = false) {
+        if (!isEnabled) return
+        ioExecutor.execute {
+            runCatching {
+                store?.record(category = category, message = message, syncWrite = true)
+            }
+        }
+    }
+
+    fun recordCrashAndFlushSync(category: String, message: String) {
         if (!isEnabled) return
         runCatching {
-            store?.record(category = category, message = message, syncWrite = syncWrite)
+            store?.record(category = category, message = message, syncWrite = true)
+            store?.flushSync()
         }
     }
 
@@ -137,8 +166,10 @@ object BreadcrumbLog {
     }
 
     fun clear() {
-        runCatching {
-            store?.clear()
+        ioExecutor.execute {
+            runCatching {
+                store?.clear()
+            }
         }
     }
 }

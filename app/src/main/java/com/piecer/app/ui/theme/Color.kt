@@ -29,7 +29,8 @@ data class PiecerColors(
     val mutedText: Color,
     val mint: Color,
     val coral: Color,
-    val amber: Color
+    val amber: Color,
+    val splashPieColors: List<Color>
 )
 
 val LightPiecerColors = PiecerColors(
@@ -42,7 +43,8 @@ val LightPiecerColors = PiecerColors(
     mutedText = Stone,
     mint = Mint,
     coral = Coral,
-    amber = Amber
+    amber = Amber,
+    splashPieColors = listOf(Ink, Charcoal, Graphite, Stone, Mint)
 )
 
 val DarkPiecerColors = PiecerColors(
@@ -55,7 +57,8 @@ val DarkPiecerColors = PiecerColors(
     mutedText = Stone,
     mint = Mint,
     coral = Coral,
-    amber = Amber
+    amber = Amber,
+    splashPieColors = listOf(Snow, Mist, Stone, Graphite, Mint)
 )
 
 val LocalPiecerColors = staticCompositionLocalOf { LightPiecerColors }

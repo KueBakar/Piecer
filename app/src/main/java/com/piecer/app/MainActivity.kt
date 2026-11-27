@@ -29,6 +29,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
@@ -73,7 +74,9 @@ import com.piecer.app.ui.theme.PiecerTheme
 import com.piecer.app.util.BreadcrumbLog
 import com.piecer.app.util.CrashReporter
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @AndroidEntryPoint
 class MainActivity : FragmentActivity() {
@@ -103,12 +106,16 @@ class MainActivity : FragmentActivity() {
             val pinError by mainViewModel.pinError.collectAsStateWithLifecycle()
             val wrongPinMessage = stringResource(id = R.string.lock_wrong_pin)
 
-            if (!isAppReady) return@setContent
-
             val darkTheme = when (settings.themeMode) {
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
+            }
+
+            var firstFrameDrawn by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) {
+                withFrameNanos { }
+                firstFrameDrawn = true
             }
 
             LaunchedEffect(settings.blockScreenshots) {
@@ -120,56 +127,68 @@ class MainActivity : FragmentActivity() {
                 }
             }
 
-            val canUseBiometric = remember(this) { canAuthenticateBiometric() }
-            var showUnseenCrashDialog by remember {
-                mutableStateOf(BuildConfig.DEBUG && CrashReporter.hasUnseenCrashReport(this@MainActivity))
-            }
+            var canUseBiometric by remember { mutableStateOf(false) }
+            var showUnseenCrashDialog by remember { mutableStateOf(false) }
             var openCrashReportRequest by remember { mutableStateOf(false) }
+
+            LaunchedEffect(isAppReady) {
+                if (isAppReady) {
+                    canUseBiometric = withContext(Dispatchers.Default) { canAuthenticateBiometric() }
+                    if (BuildConfig.CRASH_DIAGNOSTICS_ENABLED) {
+                        showUnseenCrashDialog = withContext(Dispatchers.IO) {
+                            CrashReporter.hasUnseenCrashReport(this@MainActivity)
+                        }
+                    }
+                }
+            }
 
             PiecerTheme(
                 darkTheme = darkTheme,
                 reduceMotion = settings.reduceMotion
             ) {
                 Box(modifier = Modifier.fillMaxSize()) {
-                    if (!settings.onboardingCompleted) {
-                        OnboardingScreen(onFinish = mainViewModel::completeOnboarding)
-                    } else {
-                        PiecerApp(
-                            homeViewModel = homeViewModel,
-                            transactionsViewModel = transactionsViewModel,
-                            addTransactionViewModel = addTransactionViewModel,
-                            statisticsViewModel = statisticsViewModel,
-                            walletsViewModel = walletsViewModel,
-                            budgetsViewModel = budgetsViewModel,
-                            goalsViewModel = goalsViewModel,
-                            piecesViewModel = piecesViewModel,
-                            recurringViewModel = recurringViewModel,
-                            settingsViewModel = settingsViewModel,
-                            onPinConfigured = mainViewModel::markSessionUnlocked,
-                            openCrashReportRequest = openCrashReportRequest,
-                            onCrashReportRequestHandled = { openCrashReportRequest = false }
-                        )
-
-                        if (isLocked && settings.isPinEnabled) {
-                            LockScreen(
-                                biometricEnabled = settings.biometricEnabled && canUseBiometric,
-                                lockoutUntilMillis = settings.pinLockoutUntilMillis,
-                                errorMessage = pinError,
-                                canAutoTriggerBiometric = !showSplash,
-                                onSubmitPin = { pin -> mainViewModel.submitPin(pin, wrongPinMessage) },
-                                onBiometricClick = { launchBiometricPrompt() }
+                    if (isAppReady && firstFrameDrawn) {
+                        if (!settings.onboardingCompleted) {
+                            OnboardingScreen(onFinish = mainViewModel::completeOnboarding)
+                        } else {
+                            PiecerApp(
+                                homeViewModel = homeViewModel,
+                                transactionsViewModel = transactionsViewModel,
+                                addTransactionViewModel = addTransactionViewModel,
+                                statisticsViewModel = statisticsViewModel,
+                                walletsViewModel = walletsViewModel,
+                                budgetsViewModel = budgetsViewModel,
+                                goalsViewModel = goalsViewModel,
+                                piecesViewModel = piecesViewModel,
+                                recurringViewModel = recurringViewModel,
+                                settingsViewModel = settingsViewModel,
+                                onPinConfigured = mainViewModel::markSessionUnlocked,
+                                openCrashReportRequest = openCrashReportRequest,
+                                onCrashReportRequestHandled = { openCrashReportRequest = false }
                             )
+
+                            if (isLocked && settings.isPinEnabled) {
+                                LockScreen(
+                                    biometricEnabled = settings.biometricEnabled && canUseBiometric,
+                                    lockoutUntilMillis = settings.pinLockoutUntilMillis,
+                                    errorMessage = pinError,
+                                    canAutoTriggerBiometric = !showSplash,
+                                    onSubmitPin = { pin -> mainViewModel.submitPin(pin, wrongPinMessage) },
+                                    onBiometricClick = { launchBiometricPrompt() }
+                                )
+                            }
                         }
                     }
 
                     if (showSplash) {
                         SplashAnimation(
                             reduceMotion = settings.reduceMotion,
+                            isAppReady = isAppReady,
                             onFinished = mainViewModel::onSplashFinished
                         )
                     }
 
-                    if (BuildConfig.DEBUG && showUnseenCrashDialog && !showSplash && (!isLocked || !settings.isPinEnabled)) {
+                    if (BuildConfig.CRASH_DIAGNOSTICS_ENABLED && showUnseenCrashDialog && !showSplash && (!isLocked || !settings.isPinEnabled)) {
                         AlertDialog(
                             onDismissRequest = {
                                 CrashReporter.markCrashReportSeen(this@MainActivity)
@@ -355,7 +374,7 @@ fun PiecerApp(
         }
     }
     LaunchedEffect(openCrashReportRequest) {
-        if (BuildConfig.DEBUG && openCrashReportRequest) {
+        if (BuildConfig.CRASH_DIAGNOSTICS_ENABLED && openCrashReportRequest) {
             onCrashReportRequestHandled()
             navController.navigate(PiecerRoutes.CRASH_REPORT) {
                 launchSingleTop = true
@@ -537,7 +556,7 @@ fun PiecerApp(
                     onBack = { navController.popBackStack() },
                     onPinConfigured = onPinConfigured,
                     onOpenCrashReport = {
-                        if (BuildConfig.DEBUG) {
+                        if (BuildConfig.CRASH_DIAGNOSTICS_ENABLED) {
                             navController.navigate(PiecerRoutes.CRASH_REPORT) {
                                 launchSingleTop = true
                             }
@@ -545,7 +564,7 @@ fun PiecerApp(
                     }
                 )
             }
-            if (BuildConfig.DEBUG) {
+            if (BuildConfig.CRASH_DIAGNOSTICS_ENABLED) {
                 composable(PiecerRoutes.CRASH_REPORT) {
                     CrashReportScreen(
                         onBack = { navController.popBackStack() }

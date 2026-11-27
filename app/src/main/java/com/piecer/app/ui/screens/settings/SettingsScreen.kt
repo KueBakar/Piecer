@@ -429,7 +429,7 @@ fun SettingsScreen(
                 }
             }
 
-            if (BuildConfig.DEBUG) {
+            if (BuildConfig.CRASH_DIAGNOSTICS_ENABLED) {
                 item {
                     SectionHeader(text = stringResource(id = R.string.settings_section_debug))
                 }

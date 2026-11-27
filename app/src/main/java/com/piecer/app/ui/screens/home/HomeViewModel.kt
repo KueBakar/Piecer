@@ -25,12 +25,14 @@ import com.piecer.app.util.PieceBalanceSummary
 import com.piecer.app.util.PieceCalculator
 import com.piecer.app.util.calculateBolehJajanHariIni
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -222,11 +224,13 @@ class HomeViewModel @Inject constructor(
         settingsRepository.settingsFlow.map { it.isBalanceHidden to it.piecesEnabled }.distinctUntilChanged()
     ) { state, (hidden, piecesEnabled) ->
         state.copy(isBalanceHidden = hidden, piecesEnabled = piecesEnabled)
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000L),
-        initialValue = HomeUiState()
-    )
+    }
+        .flowOn(Dispatchers.Default)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000L),
+            initialValue = HomeUiState()
+        )
 
     fun toggleBalanceVisibility() {
         viewModelScope.launch {

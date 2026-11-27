@@ -13,12 +13,11 @@ class PiecerApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        if (BuildConfig.DEBUG) {
+        if (BuildConfig.CRASH_DIAGNOSTICS_ENABLED) {
             BreadcrumbLog.init(filesDir = filesDir, enabled = true)
             BreadcrumbLog.record(
                 category = "PROCESS",
-                message = "Cold start Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) ${Build.MANUFACTURER} ${Build.MODEL}",
-                syncWrite = true
+                message = "Cold start Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) ${Build.MANUFACTURER} ${Build.MODEL}"
             )
             CrashReporter.install(context = this, enabled = true)
             registerActivityLifecycleCallbacks(DebugLifecycleLogger())
