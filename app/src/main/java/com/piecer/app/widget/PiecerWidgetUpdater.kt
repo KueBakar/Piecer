@@ -36,6 +36,7 @@ object PiecerWidgetUpdater {
     const val EXTRA_START_ROUTE = "extra_start_route"
     const val EXTRA_QUICK_TYPE = "extra_quick_type"
     const val EXTRA_FOCUS_QUICK_ENTRY = "extra_focus_quick_entry"
+    const val EXTRA_LAUNCH_VOICE_ENTRY = "extra_launch_voice_entry"
     private const val MIDNIGHT_REQUEST_CODE = 4401
 
     fun updateAllWidgets(context: Context) {

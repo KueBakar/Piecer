@@ -12,6 +12,14 @@ PIECER **tidak** mengumpulkan, menyimpan di server, menjual, atau membagikan dat
 - Seluruh transaksi, dompet, anggaran, target, utang, dan pengaturan disimpan 100% secara lokal di perangkat Anda.
 - Laporan crash hanya disimpan secara lokal di perangkat, tidak pernah dikirim otomatis, dan hanya dibagikan atas aksi Anda sendiri.
 
+## Input Suara (Ketik Cepat)
+
+Fitur **Catat dengan suara** menggunakan layanan pengenalan suara bawaan HP (biasanya Google) melalui mekanisme sistem Android (`RecognizerIntent.ACTION_RECOGNIZE_SPEECH`), tanpa meminta izin mikrofon (`RECORD_AUDIO`).
+
+- PIECER **tidak** merekam, mengakses, atau menyimpan file audio suara Anda.
+- PIECER hanya menerima teks hasil transkrip dari layanan pengenal suara sistem, lalu memprosesnya secara lokal di perangkat dengan mesin Ketik cepat.
+- Tergantung pada perangkat dan pengaturan layanan suara HP Anda, sebagian perangkat dapat memproses pengenalan suara melalui internet. Anda dapat mematikan fitur ini kapan saja di **Pengaturan → Ketik cepat → Gunakan suara**.
+
 ## Koneksi Jaringan (Hanya Pembaruan Aplikasi)
 
 Pada build rilis, satu-satunya koneksi internet yang dapat dilakukan PIECER adalah menghubungi GitHub (`github.com`, `*.github.io`, `objects.githubusercontent.com`) untuk:

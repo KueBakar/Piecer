@@ -220,6 +220,12 @@
     <string name="settings_reminder_time_label">Jam pengingat</string>
     <string name="settings_reminder_status_title">Status pengingat</string>
     <string name="settings_reminder_status_desc">Periksa izin, baterai, autostart, dan uji notifikasi</string>
+    <string name="settings_section_quick_entry">Ketik cepat</string>
+    <string name="settings_quick_entry_learn_title">Belajar dari riwayat</string>
+    <string name="settings_quick_entry_learn_desc">Pelajari koreksi kategori dan pola catatan secara lokal di perangkat</string>
+    <string name="settings_quick_entry_reset_title">Reset pembelajaran ketik cepat</string>
+    <string name="settings_quick_entry_reset_desc">Hapus semua koreksi kategori yang tersimpan</string>
+    <string name="settings_quick_entry_reset_done">Pembelajaran ketik cepat berhasil direset</string>
 
     <string name="reminder_status_title">Status pengingat</string>
     <string name="reminder_status_section_device">Status perangkat &amp; izin</string>
@@ -612,7 +618,7 @@
     <string name="about_version_chip_fmt">v%1$s</string>
     <string name="about_version_fmt">Versi %1$s (build %2$d)</string>
     <string name="about_slogan">Datamu tinggal di HP-mu</string>
-    <string name="about_summary">PIECER 100%% gratis, tanpa iklan, tanpa akun, dan tanpa server. Semua catatan keuanganmu disimpan lokal di perangkat. Satu-satunya koneksi jaringan adalah pemeriksaan pembaruan aplikasi ke GitHub.</string>
+    <string name="about_summary">PIECER 100%% gratis, tanpa iklan, tanpa akun, dan tanpa server. Semua catatan keuanganmu disimpan lokal di perangkat. Satu-satunya koneksi jaringan aplikasi adalah pemeriksaan pembaruan ke GitHub. Fitur suara memakai layanan pengenalan suara bawaan HP (biasanya Google), bukan oleh PIECER; PIECER tidak merekam atau menyimpan audio dan sebagian HP memprosesnya lewat internet.</string>
     <string name="about_links_header">Tautan</string>
     <string name="about_link_dev">Situs developer</string>
     <string name="about_link_dev_desc">Kunjungi halaman web resmi developer</string>
@@ -645,4 +651,37 @@
     <string name="update_dialog_verifying">Memverifikasi integritas &amp; tanda tangan APK…</string>
     <string name="update_dialog_installing">Menyiapkan pemasangan…</string>
     <string name="update_dialog_needs_permission">Izinkan pemasangan aplikasi dari sumber ini di Pengaturan Android untuk melanjutkan pembaruan.</string>
+
+    <string name="shortcut_voice_entry">Catat dengan suara</string>
+    <string name="settings_quick_entry_voice_title">Gunakan suara</string>
+    <string name="settings_quick_entry_voice_desc">Tampilkan tombol mikrofon di Ketik cepat (memakai pengenal suara bawaan HP)</string>
+    <string name="voice_prompt">Ucapkan transaksi, misalnya: kopi dua puluh ribu</string>
+    <string name="voice_mic_desc">Catat dengan suara</string>
+    <string name="voice_info_title">Pengenalan suara sistem</string>
+    <string name="voice_info_message">Suara diproses oleh layanan pengenalan suara bawaan HP (biasanya Google), bukan oleh PIECER. PIECER tidak merekam atau menyimpan audio, hanya memakai teks hasilnya. Sebagian HP memprosesnya lewat internet.</string>
+    <string name="voice_info_continue">Lanjut</string>
+    <string name="voice_info_cancel">Batal</string>
+    <string name="voice_unavailable_message">Layanan pengenal suara tidak tersedia di perangkat ini.</string>
+    <string name="voice_no_result_message">Suara tidak dikenali. Coba ucapkan lagi.</string>
+
+    <string name="quick_entry_preview_title">Konfirmasi transaksi</string>
+    <string name="quick_entry_preview_subtitle">Periksa dan edit sebelum disimpan (%1$d entri)</string>
+    <string name="quick_entry_preview_banner_multi">Terdeteksi %1$d transaksi · Buka pratinjau</string>
+    <string name="quick_entry_preview_banner_check">Ada bagian perlu dicek · Buka pratinjau</string>
+    <string name="quick_entry_preview_ambiguous_m">Dibaca juta. Maksud miliar?</string>
+    <string name="quick_entry_preview_convert_billion">Ubah ke miliar</string>
+    <string name="quick_entry_preview_large_amount">Nominal sangat besar (&gt; Rp1 miliar). Pastikan sudah benar.</string>
+    <string name="quick_entry_preview_no_category">Kategori belum terdeteksi. Pilih kategori di bawah.</string>
+    <string name="quick_entry_preview_amount_label">Nominal (Rp)</string>
+    <string name="quick_entry_preview_category_suggestions">Saran kategori</string>
+    <string name="quick_entry_preview_other_categories">Lainnya</string>
+    <string name="quick_entry_preview_delete_entry">Hapus entri</string>
+    <string name="quick_entry_preview_save_all">Simpan semua</string>
+    <string name="quick_entry_preview_invalid_entry">Lengkapi nominal, kategori, dan dompet di setiap kartu sebelum menyimpan.</string>
+
+    <string name="more_section_finance">Keuangan</string>
+    <string name="more_section_tools">Alat</string>
+    <string name="more_section_app">Aplikasi</string>
+    <string name="more_about_title">Tentang</string>
+    <string name="more_about_desc">Versi, privasi, tautan, &amp; lisensi</string>
 </resources>

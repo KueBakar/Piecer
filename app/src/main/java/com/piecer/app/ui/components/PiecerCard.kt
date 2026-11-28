@@ -1,6 +1,7 @@
 package com.piecer.app.ui.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.padding
@@ -19,6 +20,7 @@ enum class PiecerCardVariant {
 fun PiecerCard(
     modifier: Modifier = Modifier,
     variant: PiecerCardVariant = PiecerCardVariant.Light,
+    interactionSource: MutableInteractionSource? = null,
     onClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
@@ -45,7 +47,8 @@ fun PiecerCard(
             shape = MaterialTheme.shapes.large,
             color = containerColor,
             contentColor = contentColor,
-            border = BorderStroke(spacing.borderWidth, borderColor)
+            border = BorderStroke(spacing.borderWidth, borderColor),
+            interactionSource = interactionSource
         ) {
             Column(
                 modifier = Modifier.padding(spacing.cardPadding),

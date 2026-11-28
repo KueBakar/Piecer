@@ -2,6 +2,17 @@
 
 Semua perubahan penting pada proyek PIECER dicatat di berkas ini.
 
+## [1.5.0] - 2026-11-28
+
+### Ditambahkan & Diperbaiki
+- Ketik cepat jauh lebih pintar (angka lisan, banyak item sekaligus, belajar dari riwayat).
+- Catat transaksi dengan suara lewat pengenal suara bawaan sistem.
+- Animasi footer baru dengan indikator pil yang meluncur dan umpan haptic.
+- Menu Lainnya berbentuk grid kotak 2 kolom yang dikelompokkan rapi.
+- Layar Tentang baru dengan profil developer dan latar animasi.
+- Perbaikan pengingat agar tetap muncul meski aplikasi ditutup.
+- Perbaikan keandalan unduhan pembaruan aplikasi.
+
 ## [1.0.1] - 2026-11-28
 
 ### Ditambahkan

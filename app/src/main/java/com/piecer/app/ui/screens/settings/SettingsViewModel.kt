@@ -17,6 +17,7 @@ import com.piecer.app.util.BreadcrumbLog
 import com.piecer.app.util.CsvExporter
 import com.piecer.app.util.DailyReminderScheduler
 import com.piecer.app.util.PinHasher
+import com.piecer.app.util.quickentry.QuickEntryLearningManager
 import com.piecer.app.util.update.UpdateManager
 import com.piecer.app.util.update.UpdateUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -50,7 +51,8 @@ class SettingsViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository,
     private val walletRepository: WalletRepository,
     private val categoryRepository: CategoryRepository,
-    private val updateManager: UpdateManager
+    private val updateManager: UpdateManager,
+    private val quickEntryLearningManager: QuickEntryLearningManager
 ) : ViewModel() {
 
     val updateState: StateFlow<UpdateUiState> = updateManager.state
@@ -87,6 +89,28 @@ class SettingsViewModel @Inject constructor(
 
     fun setReduceMotion(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setReduceMotion(enabled) }
+    }
+
+    fun setQuickEntryLearningEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setQuickEntryLearningEnabled(enabled)
+            if (enabled) {
+                quickEntryLearningManager.refreshHistoryIndex()
+            }
+        }
+    }
+
+    fun setVoiceEntryEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setVoiceEntryEnabled(enabled)
+        }
+    }
+
+    fun resetQuickEntryLearning(doneMessage: String) {
+        viewModelScope.launch {
+            quickEntryLearningManager.resetLearning()
+            statusMsg.value = doneMessage
+        }
     }
 
     fun setAutoUpdateEnabled(enabled: Boolean) {

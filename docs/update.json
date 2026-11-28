@@ -1,9 +1,9 @@
 ﻿{
-    "versionCode":  2,
-    "versionName":  "1.0.1",
-    "apkUrl":  "https://github.com/KueBakar/Piecer/releases/download/v1.0.1/PIECER-v1.0.1.apk",
-    "sha256":  "0cefdac1a7da893b9a45e31233f70d734f33050e66e065d8a549d22644759463",
-    "sizeBytes":  3463608,
+    "versionCode":  10500,
+    "versionName":  "1.5.0",
+    "apkUrl":  "https://github.com/KueBakar/Piecer/releases/download/v1.5.0/PIECER-v1.5.0.apk",
+    "sha256":  "c5e6650a43318e960f3fdd8ce204ed942a9f198235e9e17cec3bdfc1a6288c83",
+    "sizeBytes":  3549928,
     "minSdk":  26,
-    "releaseNotes":  "### Ditambahkan\n- Pencatatan transaksi (pemasukan, pengeluaran, transfer) dan dompet ganda.\n- Anggaran, target tabungan, Pieces, utang/piutang, dan split bill.\n- Transaksi berulang, pengingat harian lokal, widget layar utama, dan kunci PIN/biometrik.\n- Backup/restore JSON lokal dan ekspor CSV.\n- Layar **Tentang PIECER** dan modul pembaruan aplikasi mandiri via GitHub dengan verifikasi SHA-256 dan tanda tangan APK.\n- Layar Tentang baru dengan profil developer dan latar animasi\n- Perbaikan pengingat: sekarang muncul meski app ditutup\n- Perbaikan unduhan pembaruan"
+    "releaseNotes":  "### Ditambahkan \u0026 Diperbaiki\n- Ketik cepat jauh lebih pintar (angka lisan, banyak item sekaligus, belajar dari riwayat).\n- Catat transaksi dengan suara lewat pengenal suara bawaan sistem.\n- Animasi footer baru dengan indikator pil yang meluncur dan umpan haptic.\n- Menu Lainnya berbentuk grid kotak 2 kolom yang dikelompokkan rapi.\n- Layar Tentang baru dengan profil developer dan latar animasi.\n- Perbaikan pengingat agar tetap muncul meski aplikasi ditutup.\n- Perbaikan keandalan unduhan pembaruan aplikasi."
 }

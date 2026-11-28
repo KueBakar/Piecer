@@ -1,5 +1,9 @@
 package com.piecer.app.ui.screens.addtransaction
 
+import android.app.Activity
+import android.content.ActivityNotFoundException
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,11 +22,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Backspace
 import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Mic
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -32,6 +40,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -44,11 +54,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.piecer.app.R
@@ -62,6 +75,10 @@ import com.piecer.app.ui.components.formatRupiah
 import com.piecer.app.ui.theme.PiecerTheme
 import com.piecer.app.util.DateUtils
 import com.piecer.app.util.TransactionValidationError
+import com.piecer.app.util.VoiceRecognitionHelper
+import com.piecer.app.util.quickentry.VoiceAvailabilityHandler
+import com.piecer.app.util.quickentry.VoiceAvailabilityState
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,18 +88,98 @@ fun AddTransactionScreen(
     onSaved: () -> Unit,
     modifier: Modifier = Modifier,
     focusQuickEntry: Boolean = false,
-    onQuickEntryFocusHandled: () -> Unit = {}
+    onQuickEntryFocusHandled: () -> Unit = {},
+    launchVoiceEntry: Boolean = false,
+    onVoiceEntryHandled: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val spacing = PiecerTheme.spacing
     val colorScheme = MaterialTheme.colorScheme
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
     var showDatePicker by remember { mutableStateOf(false) }
+    var showVoiceInfoDialog by remember { mutableStateOf(false) }
+    var voiceAvailability by remember { mutableStateOf(VoiceAvailabilityState()) }
     val quickEntryFocusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
+    val voicePrompt = stringResource(id = R.string.voice_prompt)
+    val voiceUnavailableMessage = stringResource(id = R.string.voice_unavailable_message)
+    val voiceNoResultMessage = stringResource(id = R.string.voice_no_result_message)
+
+    val speechLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val candidates = VoiceRecognitionHelper.extractCandidates(result.data)
+            viewModel.onVoiceCandidates(
+                candidates = candidates,
+                onNoResult = {
+                    scope.launch { snackbarHostState.showSnackbar(voiceNoResultMessage) }
+                }
+            )
+        }
+    }
+
+    val launchSpeechRecognizer: () -> Unit = {
+        val intent = VoiceRecognitionHelper.createRecognizerIntent(voicePrompt)
+        if (intent.resolveActivity(context.packageManager) == null) {
+            val resolution = VoiceAvailabilityHandler.onLaunchFailure(voiceAvailability)
+            voiceAvailability = resolution.state
+            if (resolution.showUnavailableMessageNow) {
+                scope.launch { snackbarHostState.showSnackbar(voiceUnavailableMessage) }
+            }
+        } else {
+            try {
+                speechLauncher.launch(intent)
+            } catch (_: ActivityNotFoundException) {
+                val resolution = VoiceAvailabilityHandler.onLaunchFailure(voiceAvailability)
+                voiceAvailability = resolution.state
+                if (resolution.showUnavailableMessageNow) {
+                    scope.launch { snackbarHostState.showSnackbar(voiceUnavailableMessage) }
+                }
+            }
+        }
+    }
+
+    val requestVoiceInput: () -> Unit = {
+        if (!uiState.voiceInfoShown) {
+            showVoiceInfoDialog = true
+        } else {
+            launchSpeechRecognizer()
+        }
+    }
+
+    LaunchedEffect(uiState.editingId, uiState.voiceEntryEnabled) {
+        if (uiState.editingId == null && uiState.voiceEntryEnabled) {
+            val available = VoiceRecognitionHelper.isSpeechRecognitionAvailable(context, voicePrompt)
+            val resolution = VoiceAvailabilityHandler.evaluateAvailability(voiceAvailability, available)
+            voiceAvailability = resolution.state
+            if (resolution.showUnavailableMessageNow) {
+                snackbarHostState.showSnackbar(voiceUnavailableMessage)
+            }
+        }
+    }
 
     LaunchedEffect(focusQuickEntry) {
         if (focusQuickEntry && uiState.editingId == null) {
             quickEntryFocusRequester.requestFocus()
             onQuickEntryFocusHandled()
+        }
+    }
+
+    LaunchedEffect(launchVoiceEntry, uiState.editingId, uiState.voiceEntryEnabled) {
+        if (launchVoiceEntry && uiState.editingId == null) {
+            onVoiceEntryHandled()
+            if (uiState.voiceEntryEnabled) {
+                val available = VoiceRecognitionHelper.isSpeechRecognitionAvailable(context, voicePrompt)
+                val resolution = VoiceAvailabilityHandler.evaluateAvailability(voiceAvailability, available)
+                voiceAvailability = resolution.state
+                if (resolution.state.shouldShowMicButton) {
+                    requestVoiceInput()
+                } else if (resolution.showUnavailableMessageNow) {
+                    snackbarHostState.showSnackbar(voiceUnavailableMessage)
+                }
+            }
         }
     }
 
@@ -95,6 +192,7 @@ fun AddTransactionScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = colorScheme.background,
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -147,6 +245,23 @@ fun AddTransactionScreen(
                         label = { Text(text = stringResource(id = R.string.tx_quick_entry_label)) },
                         placeholder = { Text(text = stringResource(id = R.string.tx_quick_entry_placeholder)) },
                         singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(
+                            onDone = { viewModel.openQuickEntryPreviewIfNeeded() }
+                        ),
+                        trailingIcon = if (uiState.voiceEntryEnabled && voiceAvailability.shouldShowMicButton) {
+                            {
+                                IconButton(onClick = requestVoiceInput) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Mic,
+                                        contentDescription = stringResource(id = R.string.voice_mic_desc),
+                                        tint = colorScheme.primary
+                                    )
+                                }
+                            }
+                        } else {
+                            null
+                        },
                         shape = MaterialTheme.shapes.medium,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = colorScheme.primary,
@@ -155,6 +270,34 @@ fun AddTransactionScreen(
                             unfocusedContainerColor = colorScheme.surface
                         )
                     )
+                    if (uiState.canOpenQuickEntryPreview) {
+                        Spacer(modifier = Modifier.height(spacing.xs))
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { viewModel.openQuickEntryPreviewIfNeeded() },
+                            shape = MaterialTheme.shapes.medium,
+                            color = colorScheme.surfaceVariant,
+                            border = BorderStroke(
+                                width = androidx.compose.ui.unit.Dp.Hairline,
+                                color = colorScheme.outline
+                            )
+                        ) {
+                            Text(
+                                text = if (uiState.quickEntryParsedCount > 1) {
+                                    stringResource(
+                                        id = R.string.quick_entry_preview_banner_multi,
+                                        uiState.quickEntryParsedCount
+                                    )
+                                } else {
+                                    stringResource(id = R.string.quick_entry_preview_banner_check)
+                                },
+                                style = MaterialTheme.typography.labelLarge,
+                                color = colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.sm)
+                            )
+                        }
+                    }
                     Spacer(modifier = Modifier.height(spacing.md))
                 }
 
@@ -468,6 +611,52 @@ fun AddTransactionScreen(
         ) {
             DatePicker(state = datePickerState)
         }
+    }
+
+    if (showVoiceInfoDialog) {
+        AlertDialog(
+            onDismissRequest = { showVoiceInfoDialog = false },
+            title = { Text(text = stringResource(id = R.string.voice_info_title)) },
+            text = { Text(text = stringResource(id = R.string.voice_info_message)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showVoiceInfoDialog = false
+                        viewModel.markVoiceInfoShown()
+                        launchSpeechRecognizer()
+                    }
+                ) {
+                    Text(text = stringResource(id = R.string.voice_info_continue))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showVoiceInfoDialog = false }) {
+                    Text(text = stringResource(id = R.string.voice_info_cancel))
+                }
+            }
+        )
+    }
+
+    if (uiState.showQuickEntryPreview && uiState.previewEntries.isNotEmpty()) {
+        QuickEntryPreviewBottomSheet(
+            entries = uiState.previewEntries,
+            expenseCategories = uiState.expenseCategories,
+            incomeCategories = uiState.incomeCategories,
+            wallets = uiState.wallets,
+            isSaving = uiState.isSaving,
+            showValidationError = uiState.previewValidationError,
+            onDismiss = viewModel::dismissQuickEntryPreview,
+            onAmountChange = viewModel::updatePreviewAmount,
+            onConvertAmbiguousMToBillion = viewModel::convertPreviewAmbiguousMToBillion,
+            onTypeChange = viewModel::updatePreviewType,
+            onCategorySelect = viewModel::updatePreviewCategory,
+            onWalletSelect = viewModel::updatePreviewWallet,
+            onToWalletSelect = viewModel::updatePreviewToWallet,
+            onDateSelect = viewModel::updatePreviewDate,
+            onNoteChange = viewModel::updatePreviewNote,
+            onRemoveEntry = viewModel::removePreviewEntry,
+            onSaveAll = { viewModel.saveAllPreviewEntries(onSaved) }
+        )
     }
 }
 

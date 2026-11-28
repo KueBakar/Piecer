@@ -6,7 +6,7 @@ PIECER adalah aplikasi pencatat keuangan Android native yang 100% gratis, offlin
 
 ## Fitur Utama
 
-- **Catat Cepat & Transaksi**: Pemasukan, pengeluaran, dan transfer antar dompet dengan nominal Rupiah presisi (`Long`).
+- **Catat Cepat & Transaksi**: Pemasukan, pengeluaran, dan transfer antar dompet dengan nominal Rupiah presisi (`Long`), dilengkapi Ketik cepat pintar (angka lisan, banyak item sekaligus, belajar dari riwayat) serta catat dengan suara lewat pengenal suara bawaan HP.
 - **Banyak Dompet**: Tunai, rekening bank, dan e-wallet.
 - **Anggaran & Target**: Pantau batas pengeluaran per kategori dan target tabungan.
 - **Pieces (Alokasi)**: Bagi saldo ke pos-pos khusus.
@@ -28,6 +28,7 @@ PIECER adalah aplikasi pencatat keuangan Android native yang 100% gratis, offlin
 - Tidak ada akun, tidak ada server backend, tidak ada iklan, dan tidak ada analitik/pelacak.
 - Seluruh data keuangan tersimpan lokal di perangkat Anda.
 - Satu-satunya koneksi jaringan pada build rilis adalah pemeriksaan dan pengunduhan pembaruan aplikasi dari GitHub (opsional, default mati sampai Anda menyetujuinya, dan dapat dimatikan kapan saja di **Pengaturan → Pembaruan**).
+- Fitur **Catat dengan suara** memakai layanan pengenalan suara bawaan HP (biasanya Google) tanpa izin `RECORD_AUDIO`; PIECER tidak merekam atau menyimpan audio, hanya memakai teks hasilnya (sebagian HP memprosesnya lewat internet).
 - Baca detail lengkapnya di [PRIVACY.md](PRIVACY.md).
 
 ## Cara Build dari Kode Sumber
@@ -52,7 +53,7 @@ Prasyarat: JDK 21, Android SDK (API 34), dan `ANDROID_HOME` terkonfigurasi.
 
 > **Penting — Keystore Harus Sama:** Semua versi rilis **wajib** ditandatangani dengan berkas keystore (`.jks`) yang sama. Jika keystore berubah atau hilang, pengguna tidak dapat memasang pembaruan di atas aplikasi yang sudah terpasang dan pembaruan dalam aplikasi akan menolak APK tersebut. Lihat [SIGNING.md](SIGNING.md) untuk panduan penyiapan `keystore.properties` di luar repositori.
 
-1. Naikkan `versionCode` dan `versionName` di `app/build.gradle.kts`.
+1. Naikkan `versionCode` dan `versionName` di `app/build.gradle.kts` (skema `versionCode`: `mayor * 10000 + minor * 100 + patch`, misalnya `1.5.0` → `10500`).
 2. Perbarui catatan rilis di `CHANGELOG.md`.
 3. Pastikan `keystore.properties` sudah tersedia (di `%USERPROFILE%\.piecer-signing\keystore.properties` atau env `PIECER_KEYSTORE_PROPERTIES`).
 4. Jalankan skrip rilis:

@@ -43,7 +43,7 @@ class QuickEntryParserTest {
         assertEquals(25_000L, r.amount)
         assertEquals(1L, r.categoryId)
         assertEquals(2L, r.walletId)
-        assertEquals("makan siang", r.note)
+        assertEquals("Makan siang", r.note)
     }
 
     @Test fun case02_plainDigits() {
@@ -173,7 +173,7 @@ class QuickEntryParserTest {
     }
 
     @Test fun case19_unknownCategoryDoesNotGuess() {
-        val r = parse("servis laptop 150rb bca")
+        val r = parse("urusan mendadak 150rb bca")
         assertEquals(150_000L, r.amount)
         assertNull(r.categoryId)
         assertEquals(3L, r.walletId)
@@ -228,7 +228,7 @@ class QuickEntryParserTest {
         assertNull(r.amount)
         assertNull(r.categoryId)
         assertNull(r.walletId)
-        assertEquals("urusan mendadak", r.note)
+        assertEquals("Urusan mendadak", r.note)
     }
 
     @Test fun case27_bensinPertamax() {

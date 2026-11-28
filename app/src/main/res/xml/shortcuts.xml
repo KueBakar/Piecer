@@ -56,4 +56,23 @@
                 android:value="true" />
         </intent>
     </shortcut>
+
+    <shortcut
+        android:enabled="true"
+        android:icon="@android:drawable/ic_btn_speak_now"
+        android:shortcutId="shortcut_voice_entry"
+        android:shortcutLongLabel="@string/shortcut_voice_entry"
+        android:shortcutShortLabel="@string/shortcut_voice_entry">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.piecer.app.MainActivity"
+            android:targetPackage="com.piecer.app">
+            <extra
+                android:name="extra_start_route"
+                android:value="add_transaction" />
+            <extra
+                android:name="extra_launch_voice_entry"
+                android:value="true" />
+        </intent>
+    </shortcut>
 </shortcuts>

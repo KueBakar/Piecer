@@ -9,6 +9,14 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -87,6 +95,7 @@ import com.piecer.app.ui.screens.wallets.WalletsViewModel
 import com.piecer.app.ui.screens.wrapped.WrappedScreen
 import com.piecer.app.ui.screens.wrapped.WrappedViewModel
 import com.piecer.app.widget.PiecerWidgetUpdater
+import com.piecer.app.ui.theme.LocalReduceMotion
 import com.piecer.app.ui.theme.PiecerTheme
 import com.piecer.app.util.BreadcrumbLog
 import com.piecer.app.util.CrashReporter
@@ -117,6 +126,7 @@ class MainActivity : FragmentActivity() {
     private val pendingStartRouteState = mutableStateOf<String?>(null)
     private val pendingQuickTypeState = mutableStateOf<TransactionType?>(null)
     private val pendingFocusQuickEntryState = mutableStateOf(false)
+    private val pendingVoiceEntryState = mutableStateOf(false)
 
     private fun consumeLaunchIntent(intent: android.content.Intent?) {
         if (intent == null) return
@@ -130,6 +140,9 @@ class MainActivity : FragmentActivity() {
         }
         if (intent.getBooleanExtra(PiecerWidgetUpdater.EXTRA_FOCUS_QUICK_ENTRY, false)) {
             pendingFocusQuickEntryState.value = true
+        }
+        if (intent.getBooleanExtra(PiecerWidgetUpdater.EXTRA_LAUNCH_VOICE_ENTRY, false)) {
+            pendingVoiceEntryState.value = true
         }
     }
 
@@ -248,12 +261,16 @@ class MainActivity : FragmentActivity() {
                                 pendingStartRoute = if (isLocked && settings.isPinEnabled) null else pendingStartRouteState.value,
                                 pendingQuickType = pendingQuickTypeState.value,
                                 pendingFocusQuickEntry = pendingFocusQuickEntryState.value,
+                                pendingVoiceEntry = pendingVoiceEntryState.value,
                                 onPendingLaunchHandled = {
                                     pendingStartRouteState.value = null
                                     pendingQuickTypeState.value = null
                                 },
                                 onQuickEntryFocusHandled = {
                                     pendingFocusQuickEntryState.value = false
+                                },
+                                onVoiceEntryHandled = {
+                                    pendingVoiceEntryState.value = false
                                 },
                                 onPinConfigured = mainViewModel::markSessionUnlocked,
                                 openCrashReportRequest = openCrashReportRequest,
@@ -496,8 +513,10 @@ fun PiecerApp(
     pendingStartRoute: String? = null,
     pendingQuickType: TransactionType? = null,
     pendingFocusQuickEntry: Boolean = false,
+    pendingVoiceEntry: Boolean = false,
     onPendingLaunchHandled: () -> Unit = {},
     onQuickEntryFocusHandled: () -> Unit = {},
+    onVoiceEntryHandled: () -> Unit = {},
     onPinConfigured: () -> Unit,
     openCrashReportRequest: Boolean = false,
     onCrashReportRequestHandled: () -> Unit = {},
@@ -579,6 +598,9 @@ fun PiecerApp(
         navController.navigate(PiecerRoutes.ADD_TRANSACTION)
     }
 
+    val reduceMotion = LocalReduceMotion.current
+    val tabOrder = remember { PiecerTab.entries.map { it.route } }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
@@ -611,7 +633,53 @@ fun PiecerApp(
         NavHost(
             navController = navController,
             startDestination = PiecerTab.Home.route,
-            modifier = if (isFullScreen) Modifier else Modifier.padding(innerPadding)
+            modifier = if (isFullScreen) Modifier else Modifier.padding(innerPadding),
+            enterTransition = {
+                if (reduceMotion) {
+                    EnterTransition.None
+                } else {
+                    val fromIdx = tabOrder.indexOf(initialState.destination.route)
+                    val toIdx = tabOrder.indexOf(targetState.destination.route)
+                    val dir = if (fromIdx >= 0 && toIdx >= 0 && toIdx < fromIdx) -1 else 1
+                    fadeIn(animationSpec = tween(180, easing = FastOutSlowInEasing)) +
+                        slideInHorizontally(animationSpec = tween(180, easing = FastOutSlowInEasing)) { width ->
+                            dir * (width / 24)
+                        }
+                }
+            },
+            exitTransition = {
+                if (reduceMotion) {
+                    ExitTransition.None
+                } else {
+                    val fromIdx = tabOrder.indexOf(initialState.destination.route)
+                    val toIdx = tabOrder.indexOf(targetState.destination.route)
+                    val dir = if (fromIdx >= 0 && toIdx >= 0 && toIdx < fromIdx) 1 else -1
+                    fadeOut(animationSpec = tween(180, easing = FastOutSlowInEasing)) +
+                        slideOutHorizontally(animationSpec = tween(180, easing = FastOutSlowInEasing)) { width ->
+                            dir * (width / 24)
+                        }
+                }
+            },
+            popEnterTransition = {
+                if (reduceMotion) {
+                    EnterTransition.None
+                } else {
+                    fadeIn(animationSpec = tween(180, easing = FastOutSlowInEasing)) +
+                        slideInHorizontally(animationSpec = tween(180, easing = FastOutSlowInEasing)) { width ->
+                            -(width / 24)
+                        }
+                }
+            },
+            popExitTransition = {
+                if (reduceMotion) {
+                    ExitTransition.None
+                } else {
+                    fadeOut(animationSpec = tween(180, easing = FastOutSlowInEasing)) +
+                        slideOutHorizontally(animationSpec = tween(180, easing = FastOutSlowInEasing)) { width ->
+                            width / 24
+                        }
+                }
+            }
         ) {
             composable(PiecerTab.Home.route) {
                 HomeScreen(
@@ -657,6 +725,7 @@ fun PiecerApp(
                     onOpenNetWorth = { navController.navigate(PiecerRoutes.NET_WORTH) },
                     onOpenRecurring = { navController.navigate(PiecerRoutes.RECURRING) },
                     onOpenSettings = { navController.navigate(PiecerRoutes.SETTINGS) },
+                    onOpenAbout = { navController.navigate(PiecerRoutes.ABOUT) { launchSingleTop = true } },
                     onOpenWrapped = { navController.navigate(PiecerRoutes.WRAPPED) }
                 )
             }
@@ -803,7 +872,9 @@ fun PiecerApp(
                         }
                     },
                     focusQuickEntry = pendingFocusQuickEntry,
-                    onQuickEntryFocusHandled = onQuickEntryFocusHandled
+                    onQuickEntryFocusHandled = onQuickEntryFocusHandled,
+                    launchVoiceEntry = pendingVoiceEntry,
+                    onVoiceEntryHandled = onVoiceEntryHandled
                 )
             }
         }

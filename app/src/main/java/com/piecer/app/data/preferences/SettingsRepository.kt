@@ -43,7 +43,12 @@ data class AppSettings(
     val updateWifiOnly: Boolean = false,
     val lastUpdateCheckMillis: Long = 0L,
     val lastUpdateCheckStatus: String = "",
-    val lastReminderFiredAtMillis: Long = 0L
+    val lastReminderFiredAtMillis: Long = 0L,
+    val quickEntryLearningEnabled: Boolean = true,
+    val quickEntryCorrections: Map<String, String> = emptyMap(),
+    val lastUsedWalletId: Long? = null,
+    val voiceEntryEnabled: Boolean = true,
+    val voiceInfoShown: Boolean = false
 ) {
     val isPinEnabled: Boolean get() = !pinHash.isNullOrBlank() && !pinSalt.isNullOrBlank()
 }
@@ -78,6 +83,11 @@ class SettingsRepository @Inject constructor(
         val LAST_UPDATE_CHECK_MILLIS = longPreferencesKey("last_update_check_millis")
         val LAST_UPDATE_CHECK_STATUS = stringPreferencesKey("last_update_check_status")
         val LAST_REMINDER_FIRED_AT_MILLIS = longPreferencesKey("last_reminder_fired_at_millis")
+        val QUICK_ENTRY_LEARNING_ENABLED = booleanPreferencesKey("quick_entry_learning_enabled")
+        val QUICK_ENTRY_CORRECTIONS = stringPreferencesKey("quick_entry_corrections")
+        val LAST_USED_WALLET_ID = longPreferencesKey("last_used_wallet_id")
+        val VOICE_ENTRY_ENABLED = booleanPreferencesKey("voice_entry_enabled")
+        val VOICE_INFO_SHOWN = booleanPreferencesKey("voice_info_shown")
     }
 
     val settingsFlow: Flow<AppSettings> = context.settingsDataStore.data.map { prefs ->
@@ -104,7 +114,12 @@ class SettingsRepository @Inject constructor(
             updateWifiOnly = prefs[Keys.UPDATE_WIFI_ONLY] ?: false,
             lastUpdateCheckMillis = prefs[Keys.LAST_UPDATE_CHECK_MILLIS] ?: 0L,
             lastUpdateCheckStatus = prefs[Keys.LAST_UPDATE_CHECK_STATUS] ?: "",
-            lastReminderFiredAtMillis = prefs[Keys.LAST_REMINDER_FIRED_AT_MILLIS] ?: 0L
+            lastReminderFiredAtMillis = prefs[Keys.LAST_REMINDER_FIRED_AT_MILLIS] ?: 0L,
+            quickEntryLearningEnabled = prefs[Keys.QUICK_ENTRY_LEARNING_ENABLED] ?: true,
+            quickEntryCorrections = decodeCorrections(prefs[Keys.QUICK_ENTRY_CORRECTIONS]),
+            lastUsedWalletId = prefs[Keys.LAST_USED_WALLET_ID],
+            voiceEntryEnabled = prefs[Keys.VOICE_ENTRY_ENABLED] ?: true,
+            voiceInfoShown = prefs[Keys.VOICE_INFO_SHOWN] ?: false
         )
     }
 
@@ -202,6 +217,68 @@ class SettingsRepository @Inject constructor(
             it[Keys.FAILED_PIN_ATTEMPTS] = attempts
             it[Keys.PIN_LOCKOUT_UNTIL] = lockoutUntilMillis
         }
+    }
+
+    suspend fun setLastUsedWalletId(walletId: Long) {
+        context.settingsDataStore.edit { it[Keys.LAST_USED_WALLET_ID] = walletId }
+    }
+
+    suspend fun setQuickEntryLearningEnabled(enabled: Boolean) {
+        context.settingsDataStore.edit { it[Keys.QUICK_ENTRY_LEARNING_ENABLED] = enabled }
+    }
+
+    suspend fun setVoiceEntryEnabled(enabled: Boolean) {
+        context.settingsDataStore.edit { it[Keys.VOICE_ENTRY_ENABLED] = enabled }
+    }
+
+    suspend fun setVoiceInfoShown(shown: Boolean) {
+        context.settingsDataStore.edit { it[Keys.VOICE_INFO_SHOWN] = shown }
+    }
+
+    suspend fun saveQuickEntryCorrection(keyword: String, categoryName: String) {
+        val cleanKey = keyword.trim().lowercase()
+        val cleanCat = categoryName.trim()
+        if (cleanKey.isEmpty() || cleanCat.isEmpty()) return
+        context.settingsDataStore.edit { prefs ->
+            val current = decodeCorrections(prefs[Keys.QUICK_ENTRY_CORRECTIONS]).toMutableMap()
+            current.remove(cleanKey)
+            current[cleanKey] = cleanCat
+            // Batasi maksimal 500 entri (buang yang paling lama)
+            while (current.size > 500) {
+                val oldestKey = current.keys.firstOrNull() ?: break
+                current.remove(oldestKey)
+            }
+            prefs[Keys.QUICK_ENTRY_CORRECTIONS] = encodeCorrections(current)
+        }
+    }
+
+    suspend fun clearQuickEntryCorrections() {
+        context.settingsDataStore.edit { it.remove(Keys.QUICK_ENTRY_CORRECTIONS) }
+    }
+
+    private fun decodeCorrections(raw: String?): Map<String, String> {
+        if (raw.isNullOrBlank()) return emptyMap()
+        return runCatching {
+            val obj = org.json.JSONObject(raw)
+            val result = LinkedHashMap<String, String>()
+            val keys = obj.keys()
+            while (keys.hasNext()) {
+                val k = keys.next()
+                val v = obj.optString(k)
+                if (k.isNotBlank() && v.isNotBlank()) {
+                    result[k] = v
+                }
+            }
+            result
+        }.getOrDefault(emptyMap())
+    }
+
+    private fun encodeCorrections(map: Map<String, String>): String {
+        val obj = org.json.JSONObject()
+        for ((k, v) in map) {
+            obj.put(k, v)
+        }
+        return obj.toString()
     }
 
     suspend fun applyBackupPreferences(

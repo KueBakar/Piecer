@@ -354,6 +354,35 @@ fun SettingsScreen(
             }
 
             item {
+                val resetDoneMsg = stringResource(id = R.string.settings_quick_entry_reset_done)
+                SectionHeader(text = stringResource(id = R.string.settings_section_quick_entry))
+                Spacer(modifier = Modifier.height(spacing.md))
+                PiecerCard(variant = PiecerCardVariant.Light) {
+                    Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                        SettingsSwitchRow(
+                            title = stringResource(id = R.string.settings_quick_entry_voice_title),
+                            subtitle = stringResource(id = R.string.settings_quick_entry_voice_desc),
+                            checked = settings.voiceEntryEnabled,
+                            onCheckedChange = viewModel::setVoiceEntryEnabled
+                        )
+                        HorizontalDivider(color = colorScheme.outlineVariant)
+                        SettingsSwitchRow(
+                            title = stringResource(id = R.string.settings_quick_entry_learn_title),
+                            subtitle = stringResource(id = R.string.settings_quick_entry_learn_desc),
+                            checked = settings.quickEntryLearningEnabled,
+                            onCheckedChange = viewModel::setQuickEntryLearningEnabled
+                        )
+                        HorizontalDivider(color = colorScheme.outlineVariant)
+                        SettingsActionRow(
+                            title = stringResource(id = R.string.settings_quick_entry_reset_title),
+                            subtitle = stringResource(id = R.string.settings_quick_entry_reset_desc),
+                            onClick = { viewModel.resetQuickEntryLearning(resetDoneMsg) }
+                        )
+                    }
+                }
+            }
+
+            item {
                 SectionHeader(text = stringResource(id = R.string.settings_section_security))
             }
 

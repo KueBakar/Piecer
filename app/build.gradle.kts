@@ -33,8 +33,8 @@ android {
         applicationId = "com.piecer.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.0.1"
+        versionCode = 10500
+        versionName = "1.5.0"
     }
 
     signingConfigs {
