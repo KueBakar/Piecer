@@ -39,42 +39,46 @@ object PiecerWidgetUpdater {
     private const val MIDNIGHT_REQUEST_CODE = 4401
 
     fun updateAllWidgets(context: Context) {
-        val appContext = context.applicationContext
-        val manager = AppWidgetManager.getInstance(appContext)
-        listOf(
-            PiecerCompactWidgetProvider::class.java,
-            PiecerLargeWidgetProvider::class.java
-        ).forEach { providerClass ->
-            val ids = manager.getAppWidgetIds(ComponentName(appContext, providerClass))
-            if (ids.isNotEmpty()) {
-                val intent = Intent(appContext, providerClass).apply {
-                    action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
-                    putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids)
+        runCatching {
+            val appContext = context.applicationContext
+            val manager = AppWidgetManager.getInstance(appContext)
+            listOf(
+                PiecerCompactWidgetProvider::class.java,
+                PiecerLargeWidgetProvider::class.java
+            ).forEach { providerClass ->
+                val ids = manager.getAppWidgetIds(ComponentName(appContext, providerClass))
+                if (ids.isNotEmpty()) {
+                    val intent = Intent(appContext, providerClass).apply {
+                        action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
+                        putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids)
+                    }
+                    appContext.sendBroadcast(intent)
                 }
-                appContext.sendBroadcast(intent)
             }
         }
     }
 
     fun scheduleMidnightUpdate(context: Context) {
-        val appContext = context.applicationContext
-        val alarmManager = appContext.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
-        val nextMidnight = Calendar.getInstance().apply {
-            add(Calendar.DAY_OF_YEAR, 1)
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 5)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
+        runCatching {
+            val appContext = context.applicationContext
+            val alarmManager = appContext.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
+            val nextMidnight = Calendar.getInstance().apply {
+                add(Calendar.DAY_OF_YEAR, 1)
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 5)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
 
-        val intent = Intent(appContext, PiecerWidgetMidnightReceiver::class.java)
-        val pendingIntent = PendingIntent.getBroadcast(
-            appContext,
-            MIDNIGHT_REQUEST_CODE,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        alarmManager.setAndAllowWhileIdle(AlarmManager.RTC, nextMidnight, pendingIntent)
+            val intent = Intent(appContext, PiecerWidgetMidnightReceiver::class.java)
+            val pendingIntent = PendingIntent.getBroadcast(
+                appContext,
+                MIDNIGHT_REQUEST_CODE,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC, nextMidnight, pendingIntent)
+        }
     }
 
     fun createAddTransactionPendingIntent(context: Context, requestCode: Int): PendingIntent {

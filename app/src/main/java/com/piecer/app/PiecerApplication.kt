@@ -2,26 +2,45 @@ package com.piecer.app
 
 import android.app.Activity
 import android.app.Application
+import android.content.Context
 import android.os.Build
 import android.os.Bundle
 import com.piecer.app.util.BreadcrumbLog
 import com.piecer.app.util.CrashReporter
 import dagger.hilt.android.HiltAndroidApp
+import java.io.File
 
 @HiltAndroidApp
 class PiecerApplication : Application() {
 
-    override fun onCreate() {
-        super.onCreate()
-        if (BuildConfig.CRASH_DIAGNOSTICS_ENABLED) {
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(base)
+        if (!isCrashProcess()) {
+            CrashReporter.install(context = this)
             BreadcrumbLog.init(filesDir = filesDir, enabled = true)
             BreadcrumbLog.record(
                 category = "PROCESS",
                 message = "Cold start Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) ${Build.MANUFACTURER} ${Build.MODEL}"
             )
-            CrashReporter.install(context = this, enabled = true)
+        }
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        if (!isCrashProcess()) {
             registerActivityLifecycleCallbacks(DebugLifecycleLogger())
         }
+    }
+
+    private fun isCrashProcess(): Boolean {
+        val processName = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            getProcessName()
+        } else {
+            runCatching {
+                File("/proc/self/cmdline").readText().trim('\u0000', ' ', '\n', '\r')
+            }.getOrNull()
+        }
+        return processName?.endsWith(":crash") == true
     }
 
     private class DebugLifecycleLogger : ActivityLifecycleCallbacks {

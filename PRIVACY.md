@@ -10,6 +10,7 @@ PIECER **tidak** mengumpulkan, menyimpan di server, menjual, atau membagikan dat
 - Tidak ada server backend milik developer.
 - Tidak ada iklan, SDK analitik, atau pelacak pihak ketiga.
 - Seluruh transaksi, dompet, anggaran, target, utang, dan pengaturan disimpan 100% secara lokal di perangkat Anda.
+- Laporan crash hanya disimpan secara lokal di perangkat, tidak pernah dikirim otomatis, dan hanya dibagikan atas aksi Anda sendiri.
 
 ## Koneksi Jaringan (Hanya Pembaruan Aplikasi)
 

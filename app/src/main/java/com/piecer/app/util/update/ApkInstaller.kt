@@ -8,6 +8,8 @@ import android.content.pm.PackageInstaller
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import com.piecer.app.BuildConfig
+import com.piecer.app.util.BreadcrumbLog
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -36,39 +38,50 @@ object UpdateInstallEvents {
 
 class UpdateInstallReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        val status = intent.getIntExtra(
-            PackageInstaller.EXTRA_STATUS,
-            PackageInstaller.STATUS_FAILURE
-        )
-        when (status) {
-            PackageInstaller.STATUS_PENDING_USER_ACTION -> {
-                val confirmIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    intent.getParcelableExtra(Intent.EXTRA_INTENT, Intent::class.java)
-                } else {
-                    @Suppress("DEPRECATION")
-                    intent.getParcelableExtra(Intent.EXTRA_INTENT)
+        try {
+            val status = intent.getIntExtra(
+                PackageInstaller.EXTRA_STATUS,
+                PackageInstaller.STATUS_FAILURE
+            )
+            when (status) {
+                PackageInstaller.STATUS_PENDING_USER_ACTION -> {
+                    val confirmIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        intent.getParcelableExtra(Intent.EXTRA_INTENT, Intent::class.java)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        intent.getParcelableExtra(Intent.EXTRA_INTENT)
+                    }
+                    if (confirmIntent != null) {
+                        UpdateInstallEvents.emit(InstallStatusEvent.PendingUserAction(confirmIntent))
+                    } else {
+                        UpdateInstallEvents.emit(InstallStatusEvent.Failure("Konfirmasi pemasangan tidak tersedia."))
+                    }
                 }
-                if (confirmIntent != null) {
-                    UpdateInstallEvents.emit(InstallStatusEvent.PendingUserAction(confirmIntent))
-                } else {
-                    UpdateInstallEvents.emit(InstallStatusEvent.Failure("Konfirmasi pemasangan tidak tersedia."))
+
+                PackageInstaller.STATUS_SUCCESS -> {
+                    UpdateInstallEvents.emit(InstallStatusEvent.Success)
+                }
+
+                PackageInstaller.STATUS_FAILURE_ABORTED -> {
+                    UpdateInstallEvents.emit(InstallStatusEvent.Cancelled)
+                }
+
+                else -> {
+                    val msg = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
+                        ?.takeIf { it.isNotBlank() }
+                        ?: "Pemasangan pembaruan gagal."
+                    UpdateInstallEvents.emit(InstallStatusEvent.Failure(msg))
                 }
             }
-
-            PackageInstaller.STATUS_SUCCESS -> {
-                UpdateInstallEvents.emit(InstallStatusEvent.Success)
+        } catch (t: Throwable) {
+            if (BuildConfig.CRASH_DIAGNOSTICS_ENABLED) {
+                BreadcrumbLog.record(
+                    "UPDATE",
+                    "UpdateInstallReceiver gagal (${t::class.java.simpleName}): ${t.message ?: "tanpa pesan"}",
+                    syncWrite = true
+                )
             }
-
-            PackageInstaller.STATUS_FAILURE_ABORTED -> {
-                UpdateInstallEvents.emit(InstallStatusEvent.Cancelled)
-            }
-
-            else -> {
-                val msg = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
-                    ?.takeIf { it.isNotBlank() }
-                    ?: "Pemasangan pembaruan gagal."
-                UpdateInstallEvents.emit(InstallStatusEvent.Failure(msg))
-            }
+            UpdateInstallEvents.emit(InstallStatusEvent.Failure("Pemasangan pembaruan gagal."))
         }
     }
 }
@@ -79,10 +92,21 @@ class ApkInstaller @Inject constructor(
 ) {
 
     fun canRequestPackageInstalls(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            context.packageManager.canRequestPackageInstalls()
-        } else {
-            true
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.packageManager.canRequestPackageInstalls()
+            } else {
+                true
+            }
+        } catch (t: Throwable) {
+            if (BuildConfig.CRASH_DIAGNOSTICS_ENABLED) {
+                BreadcrumbLog.record(
+                    "UPDATE",
+                    "canRequestPackageInstalls gagal (${t::class.java.simpleName}): ${t.message ?: "tanpa pesan"}",
+                    syncWrite = true
+                )
+            }
+            false
         }
     }
 
@@ -96,12 +120,12 @@ class ApkInstaller @Inject constructor(
         if (!apkFile.isFile) {
             return@withContext Result.failure(IllegalStateException("Berkas APK tidak ditemukan."))
         }
-        val packageInstaller = context.packageManager.packageInstaller
-        val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
-            setAppPackageName(context.packageName)
-        }
         var session: PackageInstaller.Session? = null
         try {
+            val packageInstaller = context.packageManager.packageInstaller
+            val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
+                setAppPackageName(context.packageName)
+            }
             val sessionId = packageInstaller.createSession(params)
             session = packageInstaller.openSession(sessionId)
             apkFile.inputStream().buffered().use { input ->
@@ -125,9 +149,16 @@ class ApkInstaller @Inject constructor(
             )
             session.commit(pendingIntent.intentSender)
             Result.success(Unit)
-        } catch (e: Exception) {
+        } catch (t: Throwable) {
             runCatching { session?.abandon() }
-            Result.failure(e)
+            if (BuildConfig.CRASH_DIAGNOSTICS_ENABLED) {
+                BreadcrumbLog.record(
+                    "UPDATE",
+                    "ApkInstaller.installApk gagal (${t::class.java.simpleName}): ${t.message ?: "tanpa pesan"}",
+                    syncWrite = true
+                )
+            }
+            Result.failure(t)
         } finally {
             runCatching { session?.close() }
         }

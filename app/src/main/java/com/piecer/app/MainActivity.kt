@@ -255,7 +255,7 @@ class MainActivity : FragmentActivity() {
                                 openCrashReportRequest = openCrashReportRequest,
                                 onCrashReportRequestHandled = { openCrashReportRequest = false },
                                 onReplaySplash = mainViewModel::replaySplash,
-                                availableUpdateVersion = updateState.availableUpdate?.versionName,
+                                availableUpdateVersion = if (updateState.isFeatureEnabled) updateState.availableUpdate?.versionName else null,
                                 onOpenUpdateDialog = mainViewModel::openUpdateDialog
                             )
 
@@ -313,6 +313,7 @@ class MainActivity : FragmentActivity() {
                     }
 
                     if (BuildConfig.UPDATE_ENABLED &&
+                        updateState.isFeatureEnabled &&
                         settings.onboardingCompleted &&
                         !settings.updateConsentShown &&
                         !showSplash &&
@@ -332,7 +333,10 @@ class MainActivity : FragmentActivity() {
                             onCancelDownload = mainViewModel::cancelUpdateDownload,
                             onDismiss = mainViewModel::dismissUpdateDialog,
                             onOpenUnknownSources = {
-                                runCatching { startActivity(mainViewModel.createUnknownSourcesIntent()) }
+                                val intent = mainViewModel.createUnknownSourcesIntent()
+                                if (intent != null) {
+                                    runCatching { startActivity(intent) }
+                                }
                             },
                             onRetryInstall = mainViewModel::retryInstallAfterPermission
                         )

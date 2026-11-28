@@ -3,6 +3,9 @@ package com.piecer.app.util.update
 import android.content.Intent
 import com.piecer.app.BuildConfig
 import com.piecer.app.data.preferences.SettingsRepository
+import com.piecer.app.util.BreadcrumbLog
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -56,9 +59,22 @@ class UpdateManager @Inject constructor(
 ) {
     companion object {
         private const val CHECK_INTERVAL_MS = 24L * 60L * 60L * 1000L
+        private const val SESSION_DISABLED_MESSAGE =
+            "Fitur pembaruan dinonaktifkan sementara untuk sesi ini karena terjadi gangguan."
     }
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    @Volatile
+    private var isDisabledForSession: Boolean = !BuildConfig.UPDATE_ENABLED
+
+    private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        handleUpdateFailure(
+            source = "scope",
+            throwable = throwable,
+            userInitiated = false
+        )
+    }
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate + exceptionHandler)
     private var downloadJob: Job? = null
     private var activeMetadata: UpdateMetadata? = null
 
@@ -66,96 +82,190 @@ class UpdateManager @Inject constructor(
     val state: StateFlow<UpdateUiState> = _state.asStateFlow()
 
     init {
-        scope.launch {
-            UpdateInstallEvents.events.collect { event ->
-                when (event) {
-                    is InstallStatusEvent.PendingUserAction -> {
-                        _state.update { it.copy(pendingConfirmIntent = event.confirmIntent) }
-                    }
+        try {
+            scope.launch {
+                try {
+                    UpdateInstallEvents.events.collect { event ->
+                        when (event) {
+                            is InstallStatusEvent.PendingUserAction -> {
+                                _state.update { it.copy(pendingConfirmIntent = event.confirmIntent) }
+                            }
 
-                    is InstallStatusEvent.Success -> {
-                        apkDownloader.clearCachedApks()
-                        _state.update {
-                            it.copy(
-                                phase = UpdatePhase.Installed,
-                                availableUpdate = null,
-                                showUpdateDialog = false,
-                                pendingConfirmIntent = null
-                            )
+                            is InstallStatusEvent.Success -> {
+                                apkDownloader.clearCachedApks()
+                                _state.update {
+                                    it.copy(
+                                        phase = UpdatePhase.Installed,
+                                        availableUpdate = null,
+                                        showUpdateDialog = false,
+                                        pendingConfirmIntent = null
+                                    )
+                                }
+                            }
+
+                            is InstallStatusEvent.Cancelled -> {
+                                apkDownloader.clearCachedApks()
+                                val meta = activeMetadata
+                                _state.update {
+                                    it.copy(
+                                        phase = if (meta != null) UpdatePhase.Available(meta) else UpdatePhase.Idle,
+                                        pendingConfirmIntent = null
+                                    )
+                                }
+                            }
+
+                            is InstallStatusEvent.Failure -> {
+                                apkDownloader.clearCachedApks()
+                                _state.update {
+                                    it.copy(
+                                        phase = UpdatePhase.Error(event.message, activeMetadata),
+                                        pendingConfirmIntent = null
+                                    )
+                                }
+                            }
                         }
                     }
-
-                    is InstallStatusEvent.Cancelled -> {
-                        apkDownloader.clearCachedApks()
-                        val meta = activeMetadata
-                        _state.update {
-                            it.copy(
-                                phase = if (meta != null) UpdatePhase.Available(meta) else UpdatePhase.Idle,
-                                pendingConfirmIntent = null
-                            )
-                        }
-                    }
-
-                    is InstallStatusEvent.Failure -> {
-                        apkDownloader.clearCachedApks()
-                        _state.update {
-                            it.copy(
-                                phase = UpdatePhase.Error(event.message, activeMetadata),
-                                pendingConfirmIntent = null
-                            )
-                        }
-                    }
+                } catch (t: Throwable) {
+                    handleUpdateFailure(
+                        source = "init.collect",
+                        throwable = t,
+                        userInitiated = false
+                    )
                 }
+            }
+        } catch (t: Throwable) {
+            handleUpdateFailure(
+                source = "init",
+                throwable = t,
+                userInitiated = false
+            )
+        }
+    }
+
+    private fun handleUpdateFailure(
+        source: String,
+        throwable: Throwable,
+        userInitiated: Boolean,
+        friendlyMessage: String = SESSION_DISABLED_MESSAGE
+    ) {
+        if (throwable is CancellationException) throw throwable
+        isDisabledForSession = true
+        runCatching { downloadJob?.cancel() }
+        downloadJob = null
+        runCatching { apkDownloader.clearCachedApks() }
+        if (BuildConfig.CRASH_DIAGNOSTICS_ENABLED) {
+            BreadcrumbLog.record(
+                category = "UPDATE",
+                message = "$source gagal (${throwable::class.java.simpleName}): ${throwable.message ?: "tanpa pesan"}",
+                syncWrite = true
+            )
+        }
+        if (userInitiated) {
+            _state.update {
+                it.copy(
+                    isFeatureEnabled = false,
+                    phase = UpdatePhase.Error(friendlyMessage, activeMetadata),
+                    pendingConfirmIntent = null
+                )
+            }
+        } else {
+            _state.update {
+                it.copy(
+                    isFeatureEnabled = false,
+                    phase = UpdatePhase.Idle,
+                    availableUpdate = null,
+                    showUpdateDialog = false,
+                    pendingConfirmIntent = null
+                )
             }
         }
     }
 
     fun consumePendingConfirmIntent() {
-        _state.update { it.copy(pendingConfirmIntent = null) }
+        try {
+            _state.update { it.copy(pendingConfirmIntent = null) }
+        } catch (t: Throwable) {
+            handleUpdateFailure("consumePendingConfirmIntent", t, userInitiated = false)
+        }
     }
 
     fun openUpdateDialog() {
-        val available = _state.value.availableUpdate ?: return
-        _state.update {
-            it.copy(
-                showUpdateDialog = true,
-                phase = if (it.phase is UpdatePhase.Idle || it.phase is UpdatePhase.UpToDate) {
-                    UpdatePhase.Available(available)
-                } else {
-                    it.phase
-                }
-            )
+        try {
+            if (isDisabledForSession || !BuildConfig.UPDATE_ENABLED) return
+            val available = _state.value.availableUpdate ?: return
+            _state.update {
+                it.copy(
+                    showUpdateDialog = true,
+                    phase = if (it.phase is UpdatePhase.Idle || it.phase is UpdatePhase.UpToDate) {
+                        UpdatePhase.Available(available)
+                    } else {
+                        it.phase
+                    }
+                )
+            }
+        } catch (t: Throwable) {
+            handleUpdateFailure("openUpdateDialog", t, userInitiated = true)
         }
     }
 
     fun dismissUpdateDialog() {
-        val currentPhase = _state.value.phase
-        if (currentPhase is UpdatePhase.Downloading || currentPhase is UpdatePhase.Verifying) {
-            return
+        try {
+            val currentPhase = _state.value.phase
+            if (currentPhase is UpdatePhase.Downloading || currentPhase is UpdatePhase.Verifying) {
+                return
+            }
+            _state.update { it.copy(showUpdateDialog = false) }
+        } catch (t: Throwable) {
+            handleUpdateFailure("dismissUpdateDialog", t, userInitiated = false)
         }
-        _state.update { it.copy(showUpdateDialog = false) }
     }
 
     fun checkInBackgroundIfDue() {
-        if (!BuildConfig.UPDATE_ENABLED) return
-        scope.launch {
-            val settings = settingsRepository.getSettings()
-            if (!settings.autoUpdateEnabled) return@launch
-            val now = System.currentTimeMillis()
-            if (now - settings.lastUpdateCheckMillis < CHECK_INTERVAL_MS) return@launch
-            performCheck(showDialogOnAvailable = false)
+        try {
+            if (isDisabledForSession || !BuildConfig.UPDATE_ENABLED) return
+            scope.launch {
+                try {
+                    if (isDisabledForSession) return@launch
+                    val settings = settingsRepository.getSettings()
+                    if (!settings.autoUpdateEnabled) return@launch
+                    val now = System.currentTimeMillis()
+                    if (now - settings.lastUpdateCheckMillis < CHECK_INTERVAL_MS) return@launch
+                    performCheck(showDialogOnAvailable = false)
+                } catch (t: Throwable) {
+                    handleUpdateFailure("checkInBackgroundIfDue.launch", t, userInitiated = false)
+                }
+            }
+        } catch (t: Throwable) {
+            handleUpdateFailure("checkInBackgroundIfDue", t, userInitiated = false)
         }
     }
 
     fun checkManually() {
-        if (!BuildConfig.UPDATE_ENABLED) {
-            _state.update {
-                it.copy(phase = UpdatePhase.Error("Pemeriksaan pembaruan hanya aktif pada build rilis."))
+        try {
+            if (isDisabledForSession || !BuildConfig.UPDATE_ENABLED) {
+                _state.update {
+                    it.copy(
+                        isFeatureEnabled = false,
+                        phase = UpdatePhase.Error(
+                            if (!BuildConfig.UPDATE_ENABLED) {
+                                "Pemeriksaan pembaruan hanya aktif pada build rilis."
+                            } else {
+                                SESSION_DISABLED_MESSAGE
+                            }
+                        )
+                    )
+                }
+                return
             }
-            return
-        }
-        scope.launch {
-            performCheck(showDialogOnAvailable = true)
+            scope.launch {
+                try {
+                    performCheck(showDialogOnAvailable = true)
+                } catch (t: Throwable) {
+                    handleUpdateFailure("checkManually.launch", t, userInitiated = true)
+                }
+            }
+        } catch (t: Throwable) {
+            handleUpdateFailure("checkManually", t, userInitiated = true)
         }
     }
 
@@ -210,63 +320,92 @@ class UpdateManager @Inject constructor(
     }
 
     fun startDownload(wifiOnly: Boolean) {
-        val metadata = _state.value.availableUpdate ?: activeMetadata ?: return
-        activeMetadata = metadata
-        downloadJob?.cancel()
-        downloadJob = scope.launch {
-            apkDownloader.download(metadata, wifiOnly).collect { progress ->
-                when (progress) {
-                    is DownloadProgress.InProgress -> {
-                        _state.update {
-                            it.copy(
-                                phase = UpdatePhase.Downloading(
-                                    metadata = metadata,
-                                    bytesRead = progress.bytesRead,
-                                    totalBytes = progress.totalBytes
-                                ),
-                                showUpdateDialog = true
-                            )
+        try {
+            if (isDisabledForSession || !BuildConfig.UPDATE_ENABLED) return
+            val metadata = _state.value.availableUpdate ?: activeMetadata ?: return
+            activeMetadata = metadata
+            downloadJob?.cancel()
+            downloadJob = scope.launch {
+                try {
+                    apkDownloader.download(metadata, wifiOnly).collect { progress ->
+                        when (progress) {
+                            is DownloadProgress.InProgress -> {
+                                _state.update {
+                                    it.copy(
+                                        phase = UpdatePhase.Downloading(
+                                            metadata = metadata,
+                                            bytesRead = progress.bytesRead,
+                                            totalBytes = progress.totalBytes
+                                        ),
+                                        showUpdateDialog = true
+                                    )
+                                }
+                            }
+
+                            is DownloadProgress.Completed -> {
+                                verifyAndInstall(metadata, File(progress.filePath))
+                            }
+
+                            is DownloadProgress.Cancelled -> {
+                                _state.update {
+                                    it.copy(phase = UpdatePhase.Available(metadata))
+                                }
+                            }
+
+                            is DownloadProgress.Failed -> {
+                                _state.update {
+                                    it.copy(phase = UpdatePhase.Error(progress.message, metadata))
+                                }
+                            }
                         }
                     }
-
-                    is DownloadProgress.Completed -> {
-                        verifyAndInstall(metadata, File(progress.filePath))
-                    }
-
-                    is DownloadProgress.Cancelled -> {
-                        _state.update {
-                            it.copy(phase = UpdatePhase.Available(metadata))
-                        }
-                    }
-
-                    is DownloadProgress.Failed -> {
-                        _state.update {
-                            it.copy(phase = UpdatePhase.Error(progress.message, metadata))
-                        }
-                    }
+                } catch (t: Throwable) {
+                    handleUpdateFailure("startDownload.launch", t, userInitiated = true)
                 }
             }
+        } catch (t: Throwable) {
+            handleUpdateFailure("startDownload", t, userInitiated = true)
         }
     }
 
     fun cancelDownload() {
-        downloadJob?.cancel()
-        downloadJob = null
-        apkDownloader.clearCachedApks()
-        val meta = activeMetadata
-        _state.update {
-            it.copy(
-                phase = if (meta != null) UpdatePhase.Available(meta) else UpdatePhase.Idle
-            )
+        try {
+            downloadJob?.cancel()
+            downloadJob = null
+            apkDownloader.clearCachedApks()
+            val meta = activeMetadata
+            _state.update {
+                it.copy(
+                    phase = if (meta != null) UpdatePhase.Available(meta) else UpdatePhase.Idle
+                )
+            }
+        } catch (t: Throwable) {
+            handleUpdateFailure("cancelDownload", t, userInitiated = true)
         }
     }
 
-    fun createUnknownSourcesIntent(): Intent = apkInstaller.createUnknownSourcesSettingsIntent()
+    fun createUnknownSourcesIntent(): Intent? {
+        return try {
+            apkInstaller.createUnknownSourcesSettingsIntent()
+        } catch (t: Throwable) {
+            handleUpdateFailure("createUnknownSourcesIntent", t, userInitiated = true)
+            null
+        }
+    }
 
     fun retryInstallAfterPermission() {
-        val phase = _state.value.phase as? UpdatePhase.NeedsUnknownSourcesPermission ?: return
-        scope.launch {
-            verifyAndInstall(phase.metadata, File(phase.apkPath))
+        try {
+            if (isDisabledForSession || !BuildConfig.UPDATE_ENABLED) return
+            val phase = _state.value.phase as? UpdatePhase.NeedsUnknownSourcesPermission ?: return
+            scope.launch {
+                try {
+                    verifyAndInstall(phase.metadata, File(phase.apkPath))
+                } catch (t: Throwable) {
+                    handleUpdateFailure("retryInstallAfterPermission.launch", t, userInitiated = true)
+                }
+            }
+        } catch (t: Throwable) {
+            handleUpdateFailure("retryInstallAfterPermission", t, userInitiated = true)
         }
     }
 

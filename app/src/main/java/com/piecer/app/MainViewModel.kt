@@ -67,7 +67,17 @@ class MainViewModel @Inject constructor(
             }
             _isAppReady.value = true
             runCatching { recurringProcessor.get().processDueAndNotify() }
-            updateManager.checkInBackgroundIfDue()
+            try {
+                updateManager.checkInBackgroundIfDue()
+            } catch (t: Throwable) {
+                if (BuildConfig.CRASH_DIAGNOSTICS_ENABLED) {
+                    BreadcrumbLog.record(
+                        "UPDATE",
+                        "MainViewModel.init checkInBackgroundIfDue gagal (${t::class.java.simpleName}): ${t.message}",
+                        syncWrite = true
+                    )
+                }
+            }
         }
     }
 
@@ -109,25 +119,66 @@ class MainViewModel @Inject constructor(
             _pinError.value = null
             BreadcrumbLog.record("LOCK", "State=LOCKED reason=foreground_timeout", syncWrite = true)
         }
-        updateManager.checkInBackgroundIfDue()
-    }
-
-    fun answerUpdateConsent(allowAutoUpdate: Boolean) {
-        viewModelScope.launch {
-            settingsRepository.setUpdateConsentAnswered(allowAutoUpdate)
-            if (allowAutoUpdate) {
-                updateManager.checkInBackgroundIfDue()
+        try {
+            updateManager.checkInBackgroundIfDue()
+        } catch (t: Throwable) {
+            if (BuildConfig.CRASH_DIAGNOSTICS_ENABLED) {
+                BreadcrumbLog.record(
+                    "UPDATE",
+                    "MainViewModel.onAppStart checkInBackgroundIfDue gagal (${t::class.java.simpleName}): ${t.message}",
+                    syncWrite = true
+                )
             }
         }
     }
 
-    fun openUpdateDialog() = updateManager.openUpdateDialog()
-    fun dismissUpdateDialog() = updateManager.dismissUpdateDialog()
-    fun startUpdateDownload() = updateManager.startDownload(settings.value.updateWifiOnly)
-    fun cancelUpdateDownload() = updateManager.cancelDownload()
-    fun createUnknownSourcesIntent() = updateManager.createUnknownSourcesIntent()
-    fun retryInstallAfterPermission() = updateManager.retryInstallAfterPermission()
-    fun consumePendingConfirmIntent() = updateManager.consumePendingConfirmIntent()
+    fun answerUpdateConsent(allowAutoUpdate: Boolean) {
+        viewModelScope.launch {
+            try {
+                settingsRepository.setUpdateConsentAnswered(allowAutoUpdate)
+                if (allowAutoUpdate) {
+                    updateManager.checkInBackgroundIfDue()
+                }
+            } catch (t: Throwable) {
+                if (BuildConfig.CRASH_DIAGNOSTICS_ENABLED) {
+                    BreadcrumbLog.record(
+                        "UPDATE",
+                        "answerUpdateConsent gagal (${t::class.java.simpleName}): ${t.message}",
+                        syncWrite = true
+                    )
+                }
+            }
+        }
+    }
+
+    fun openUpdateDialog() = safeUpdateCall("openUpdateDialog") { updateManager.openUpdateDialog() }
+    fun dismissUpdateDialog() = safeUpdateCall("dismissUpdateDialog") { updateManager.dismissUpdateDialog() }
+    fun startUpdateDownload() = safeUpdateCall("startUpdateDownload") { updateManager.startDownload(settings.value.updateWifiOnly) }
+    fun cancelUpdateDownload() = safeUpdateCall("cancelUpdateDownload") { updateManager.cancelDownload() }
+    fun createUnknownSourcesIntent() = try {
+        updateManager.createUnknownSourcesIntent()
+    } catch (t: Throwable) {
+        if (BuildConfig.CRASH_DIAGNOSTICS_ENABLED) {
+            BreadcrumbLog.record("UPDATE", "createUnknownSourcesIntent gagal: ${t.message}", syncWrite = true)
+        }
+        null
+    }
+    fun retryInstallAfterPermission() = safeUpdateCall("retryInstallAfterPermission") { updateManager.retryInstallAfterPermission() }
+    fun consumePendingConfirmIntent() = safeUpdateCall("consumePendingConfirmIntent") { updateManager.consumePendingConfirmIntent() }
+
+    private inline fun safeUpdateCall(action: String, block: () -> Unit) {
+        try {
+            block()
+        } catch (t: Throwable) {
+            if (BuildConfig.CRASH_DIAGNOSTICS_ENABLED) {
+                BreadcrumbLog.record(
+                    "UPDATE",
+                    "MainViewModel.$action gagal (${t::class.java.simpleName}): ${t.message}",
+                    syncWrite = true
+                )
+            }
+        }
+    }
 
     fun onAppStop(isChangingConfigurations: Boolean) {
         if (AppLockPolicy.shouldRecordBackgroundTimestamp(

@@ -8,6 +8,7 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import androidx.core.content.ContextCompat
 import com.piecer.app.BuildConfig
+import com.piecer.app.util.BreadcrumbLog
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -134,9 +135,16 @@ class ApkDownloader @Inject constructor(
             partFile.delete()
             finalFile.delete()
             emit(DownloadProgress.Failed(e.message ?: "Gagal mengunduh pembaruan."))
-        } catch (_: Exception) {
+        } catch (t: Throwable) {
             partFile.delete()
             finalFile.delete()
+            if (BuildConfig.CRASH_DIAGNOSTICS_ENABLED) {
+                BreadcrumbLog.record(
+                    "UPDATE",
+                    "ApkDownloader gagal (${t::class.java.simpleName}): ${t.message ?: "tanpa pesan"}",
+                    syncWrite = true
+                )
+            }
             emit(DownloadProgress.Failed("Terjadi kesalahan saat mengunduh APK."))
         } finally {
             connection?.disconnect()

@@ -7,6 +7,7 @@ import android.content.pm.Signature
 import android.os.Build
 import androidx.core.content.pm.PackageInfoCompat
 import com.piecer.app.BuildConfig
+import com.piecer.app.util.BreadcrumbLog
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.security.MessageDigest
@@ -60,59 +61,71 @@ class ApkVerifier @Inject constructor(
 ) {
 
     fun verifyDownloadedApk(file: File, metadata: UpdateMetadata): InstallDecision {
-        if (!file.isFile) {
-            return InstallDecision.Rejected(InstallRejectReason.INVALID_APK)
+        return try {
+            if (!file.isFile) {
+                return InstallDecision.Rejected(InstallRejectReason.INVALID_APK)
+            }
+
+            val actualSize = file.length()
+            if (actualSize != metadata.sizeBytes) {
+                file.delete()
+                return InstallDecision.Rejected(InstallRejectReason.SIZE_MISMATCH)
+            }
+
+            val actualSha256 = Sha256Verifier.computeSha256(file)
+            if (actualSha256 != metadata.sha256.lowercase()) {
+                file.delete()
+                return InstallDecision.Rejected(InstallRejectReason.SHA256_MISMATCH)
+            }
+
+            val pm = context.packageManager
+            val archiveInfo = getArchivePackageInfo(pm, file.absolutePath)
+            if (archiveInfo == null) {
+                file.delete()
+                return InstallDecision.Rejected(InstallRejectReason.INVALID_APK)
+            }
+
+            val currentInfo = getInstalledPackageInfo(pm, context.packageName)
+            if (currentInfo == null) {
+                file.delete()
+                return InstallDecision.Rejected(InstallRejectReason.MISSING_SIGNATURE)
+            }
+
+            val currentCerts = extractSigningCertSha256s(currentInfo)
+            val archiveCerts = extractSigningCertSha256s(archiveInfo)
+            val archiveVersionCode = PackageInfoCompat.getLongVersionCode(archiveInfo)
+            val archiveMinSdk = archiveInfo.applicationInfo?.minSdkVersion ?: metadata.minSdk
+
+            val decision = InstallEligibility.evaluate(
+                expectedPackageName = context.packageName,
+                currentVersionCode = BuildConfig.VERSION_CODE.toLong(),
+                currentSigningCertSha256s = currentCerts,
+                apkPackageName = archiveInfo.packageName,
+                apkVersionCode = archiveVersionCode,
+                apkSigningCertSha256s = archiveCerts,
+                apkMinSdk = maxOf(archiveMinSdk, metadata.minSdk),
+                deviceSdkInt = Build.VERSION.SDK_INT,
+                actualSizeBytes = actualSize,
+                expectedSizeBytes = metadata.sizeBytes,
+                actualSha256 = actualSha256,
+                expectedSha256 = metadata.sha256.lowercase()
+            )
+
+            if (decision !is InstallDecision.Allowed) {
+                file.delete()
+            }
+            decision
+        } catch (t: Throwable) {
+            runCatching { file.delete() }
+            if (BuildConfig.CRASH_DIAGNOSTICS_ENABLED) {
+                BreadcrumbLog.record(
+                    "UPDATE",
+                    "ApkVerifier gagal (${t::class.java.simpleName}): ${t.message ?: "tanpa pesan"}",
+                    syncWrite = true
+                )
+            }
+            InstallDecision.Rejected(InstallRejectReason.INVALID_APK)
         }
-
-        val actualSize = file.length()
-        if (actualSize != metadata.sizeBytes) {
-            file.delete()
-            return InstallDecision.Rejected(InstallRejectReason.SIZE_MISMATCH)
-        }
-
-        val actualSha256 = Sha256Verifier.computeSha256(file)
-        if (actualSha256 != metadata.sha256.lowercase()) {
-            file.delete()
-            return InstallDecision.Rejected(InstallRejectReason.SHA256_MISMATCH)
-        }
-
-        val pm = context.packageManager
-        val archiveInfo = getArchivePackageInfo(pm, file.absolutePath)
-        if (archiveInfo == null) {
-            file.delete()
-            return InstallDecision.Rejected(InstallRejectReason.INVALID_APK)
-        }
-
-        val currentInfo = getInstalledPackageInfo(pm, context.packageName)
-        if (currentInfo == null) {
-            file.delete()
-            return InstallDecision.Rejected(InstallRejectReason.MISSING_SIGNATURE)
-        }
-
-        val currentCerts = extractSigningCertSha256s(currentInfo)
-        val archiveCerts = extractSigningCertSha256s(archiveInfo)
-        val archiveVersionCode = PackageInfoCompat.getLongVersionCode(archiveInfo)
-        val archiveMinSdk = archiveInfo.applicationInfo?.minSdkVersion ?: metadata.minSdk
-
-        val decision = InstallEligibility.evaluate(
-            expectedPackageName = context.packageName,
-            currentVersionCode = BuildConfig.VERSION_CODE.toLong(),
-            currentSigningCertSha256s = currentCerts,
-            apkPackageName = archiveInfo.packageName,
-            apkVersionCode = archiveVersionCode,
-            apkSigningCertSha256s = archiveCerts,
-            apkMinSdk = maxOf(archiveMinSdk, metadata.minSdk),
-            deviceSdkInt = Build.VERSION.SDK_INT,
-            actualSizeBytes = actualSize,
-            expectedSizeBytes = metadata.sizeBytes,
-            actualSha256 = actualSha256,
-            expectedSha256 = metadata.sha256.lowercase()
-        )
-
-        if (decision !is InstallDecision.Allowed) {
-            file.delete()
-        }
-        return decision
     }
 
     @Suppress("DEPRECATION")

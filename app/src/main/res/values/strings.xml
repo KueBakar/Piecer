@@ -280,6 +280,13 @@
     <string name="settings_crash_report_desc">Lihat crash terakhir dan jejak kejadian</string>
     <string name="settings_replay_splash_title">Putar ulang splash</string>
     <string name="settings_replay_splash_desc">Tampilkan animasi splash lagi tanpa restart aplikasi</string>
+    <string name="settings_trigger_test_crash_title">Picu crash uji</string>
+    <string name="settings_trigger_test_crash_desc">Menguji layar laporan crash otomatis</string>
+    <string name="crash_activity_title">Aplikasi Berhenti Tak Terduga</string>
+    <string name="crash_activity_subtitle">Laporan ini hanya disimpan lokal di perangkat dan tidak dikirim ke mana pun.</string>
+    <string name="crash_activity_close">Tutup</string>
+    <string name="about_last_crash_title">Laporan crash terakhir</string>
+    <string name="about_last_crash_desc">Buka laporan crash yang tersimpan di perangkat</string>
     <string name="crash_report_title">Laporan Masalah</string>
     <string name="crash_report_empty">Belum ada laporan crash tersimpan.</string>
     <string name="crash_report_breadcrumbs_header">Jejak Kejadian Terkini</string>

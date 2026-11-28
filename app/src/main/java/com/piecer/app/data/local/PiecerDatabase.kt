@@ -20,7 +20,6 @@ import com.piecer.app.data.local.entity.AssetEntity
 import com.piecer.app.data.local.entity.AssetHistoryEntity
 import com.piecer.app.data.local.entity.BudgetEntity
 import com.piecer.app.data.local.entity.CategoryEntity
-import com.piecer.app.data.local.entity.CategoryType
 import com.piecer.app.data.local.entity.DebtEntity
 import com.piecer.app.data.local.entity.DebtPaymentEntity
 import com.piecer.app.data.local.entity.GoalEntity
@@ -30,7 +29,6 @@ import com.piecer.app.data.local.entity.PieceEntity
 import com.piecer.app.data.local.entity.RecurringEntity
 import com.piecer.app.data.local.entity.TransactionEntity
 import com.piecer.app.data.local.entity.WalletEntity
-import com.piecer.app.data.local.entity.WalletType
 
 @Database(
     entities = [
@@ -274,57 +272,29 @@ abstract class PiecerDatabase : RoomDatabase() {
             val now = System.currentTimeMillis()
             db.beginTransaction()
             try {
-                val walletValues = ContentValues().apply {
-                    put("name", "Tunai")
-                    put("type", WalletType.CASH.name)
-                    put("initialBalance", 0L)
-                    put("iconKey", "wallet")
-                    put("colorKey", "ink")
-                    put("createdAt", now)
-                }
-                db.insert("wallets", SQLiteDatabase.CONFLICT_ABORT, walletValues)
-
-                val expenseCategories = listOf(
-                    "Makan" to "restaurant",
-                    "Transport" to "directions_car",
-                    "Belanja" to "shopping_bag",
-                    "Tagihan" to "receipt_long",
-                    "Hiburan" to "movie",
-                    "Kesehatan" to "medical_services",
-                    "Pendidikan" to "school",
-                    "Lainnya" to "more_horiz"
-                )
-                expenseCategories.forEach { (name, iconKey) ->
-                    val values = ContentValues().apply {
-                        put("name", name)
-                        put("type", CategoryType.EXPENSE.name)
-                        put("iconKey", iconKey)
-                        put("colorKey", "coral")
-                        put("isDefault", 1)
+                SeedData.rowsByTable(now).forEach { (tableName, rows) ->
+                    rows.forEach { row ->
+                        db.insert(tableName, SQLiteDatabase.CONFLICT_ABORT, row.toContentValues())
                     }
-                    db.insert("categories", SQLiteDatabase.CONFLICT_ABORT, values)
                 }
-
-                val incomeCategories = listOf(
-                    "Gaji" to "payments",
-                    "Bonus" to "card_giftcard",
-                    "Hadiah" to "redeem",
-                    "Lainnya" to "more_horiz"
-                )
-                incomeCategories.forEach { (name, iconKey) ->
-                    val values = ContentValues().apply {
-                        put("name", name)
-                        put("type", CategoryType.INCOME.name)
-                        put("iconKey", iconKey)
-                        put("colorKey", "mint")
-                        put("isDefault", 1)
-                    }
-                    db.insert("categories", SQLiteDatabase.CONFLICT_ABORT, values)
-                }
-
                 db.setTransactionSuccessful()
             } finally {
                 db.endTransaction()
+            }
+        }
+
+        private fun Map<String, Any?>.toContentValues(): ContentValues = ContentValues().apply {
+            forEach { (key, value) ->
+                when (value) {
+                    null -> putNull(key)
+                    is String -> put(key, value)
+                    is Int -> put(key, value)
+                    is Long -> put(key, value)
+                    is Boolean -> put(key, if (value) 1 else 0)
+                    is Double -> put(key, value)
+                    is Float -> put(key, value)
+                    else -> throw IllegalArgumentException("Unsupported seed value type for $key: ${value::class.java}")
+                }
             }
         }
     }

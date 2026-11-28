@@ -2,6 +2,8 @@ package com.piecer.app.util.update
 
 import android.os.Build
 import com.piecer.app.BuildConfig
+import com.piecer.app.util.BreadcrumbLog
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
@@ -48,7 +50,16 @@ class UpdateChecker @Inject constructor() {
             UpdateCheckResult.Error(e.message ?: "Ukuran metadata pembaruan melebihi batas.")
         } catch (e: IOException) {
             UpdateCheckResult.Error("Tidak dapat terhubung ke server pembaruan. Periksa koneksi internet Anda.")
-        } catch (_: Exception) {
+        } catch (e: CancellationException) {
+            throw e
+        } catch (t: Throwable) {
+            if (BuildConfig.CRASH_DIAGNOSTICS_ENABLED) {
+                BreadcrumbLog.record(
+                    "UPDATE",
+                    "UpdateChecker gagal (${t::class.java.simpleName}): ${t.message ?: "tanpa pesan"}",
+                    syncWrite = true
+                )
+            }
             UpdateCheckResult.Error("Terjadi kesalahan saat memeriksa pembaruan.")
         }
     }

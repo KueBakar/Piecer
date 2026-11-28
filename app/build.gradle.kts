@@ -77,7 +77,8 @@ android {
             versionNameSuffix = "-staging"
             matchingFallbacks += listOf("release")
             buildConfigField("boolean", "CRASH_DIAGNOSTICS_ENABLED", "true")
-            buildConfigField("boolean", "UPDATE_ENABLED", "false")
+            // Menguji modul pembaruan di bawah R8 dengan diagnostik crash aktif
+            buildConfigField("boolean", "UPDATE_ENABLED", "true")
         }
     }
 

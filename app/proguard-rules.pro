@@ -30,3 +30,12 @@
 
 # Biometric
 -keep class androidx.biometric.** { *; }
+
+# Update module (R8 keep untuk Hilt, model, parser JSON, dan BroadcastReceiver)
+-keep class com.piecer.app.util.update.** { *; }
+-keepclassmembers enum com.piecer.app.util.update.** { *; }
+-keep class org.json.** { *; }
+
+# Global CoroutineExceptionHandler (ServiceLoader) & CrashActivity
+-keep class com.piecer.app.util.GlobalCoroutineExceptionHandler { *; }
+-keep class com.piecer.app.ui.crash.CrashActivity { *; }

@@ -2,7 +2,9 @@ package com.piecer.app.util
 
 import android.content.Context
 import android.os.Build
+import android.os.Process
 import com.piecer.app.BuildConfig
+import com.piecer.app.ui.crash.CrashActivity
 import java.io.File
 import java.io.PrintWriter
 import java.io.StringWriter
@@ -10,11 +12,14 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.system.exitProcess
 
 /**
  * Pemformat laporan crash agar seragam dan mudah diuji di unit test.
  */
 object CrashReportFormatter {
+    const val MAX_REPORT_BREADCRUMBS = 50
     private val timeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS z", Locale.US)
 
     fun format(
@@ -27,14 +32,17 @@ object CrashReportFormatter {
         threadName: String,
         stackTrace: String,
         breadcrumbs: List<String>,
+        appVersion: String = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+        buildType: String = BuildConfig.BUILD_TYPE,
         zoneId: ZoneId = ZoneId.systemDefault()
     ): String {
         val formattedTime = timeFormatter.format(Instant.ofEpochMilli(timestampMillis).atZone(zoneId))
-        val recentBreadcrumbs = breadcrumbs.takeLast(BreadcrumbStore.DEFAULT_MAX_ENTRIES)
+        val recentBreadcrumbs = breadcrumbs.takeLast(MAX_REPORT_BREADCRUMBS)
 
         return buildString {
             appendLine("=== PIECER CRASH REPORT ===")
             appendLine("Waktu: $formattedTime")
+            appendLine("Versi App: $appVersion ($buildType)")
             appendLine("Android: $androidRelease (API $sdkInt)")
             appendLine("Perangkat: $manufacturer $model ($device)")
             appendLine("Thread: $threadName")
@@ -53,7 +61,7 @@ object CrashReportFormatter {
 }
 
 /**
- * Pencatat uncaught exception lokal (hanya aktif di build debug).
+ * Pencatat uncaught exception lokal (aktif di semua tipe build termasuk release).
  */
 object CrashReporter {
     private const val REPORT_FILE_NAME = "debug_crash_report.txt"
@@ -62,29 +70,55 @@ object CrashReporter {
     @Volatile
     private var installed = false
 
-    fun install(context: Context, enabled: Boolean = BuildConfig.CRASH_DIAGNOSTICS_ENABLED) {
-        if (!enabled || installed) return
+    @Volatile
+    private var appContext: Context? = null
+
+    @Volatile
+    private var defaultHandler: Thread.UncaughtExceptionHandler? = null
+
+    private val handlingCrash = AtomicBoolean(false)
+
+    fun install(context: Context) {
+        if (installed) return
         installed = true
-        val filesDir = context.filesDir
-        val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
+        appContext = context.applicationContext ?: context
+        defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
 
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            reportUncaughtException(thread = thread, throwable = throwable)
+        }
+    }
+
+    fun reportUncaughtException(thread: Thread, throwable: Throwable) {
+        val previousHandler = defaultHandler
+        if (!handlingCrash.compareAndSet(false, true)) {
+            previousHandler?.uncaughtException(thread, throwable)
+            return
+        }
+
+        val ctx = appContext
+        if (ctx == null) {
+            previousHandler?.uncaughtException(thread, throwable)
+            return
+        }
+
+        try {
+            writeCrashReport(filesDir = ctx.filesDir, thread = thread, throwable = throwable)
+            ctx.startActivity(CrashActivity.createLaunchIntent(ctx))
+            Process.killProcess(Process.myPid())
+            exitProcess(10)
+        } catch (_: Throwable) {
+            // Cegah loop: bila handler sendiri gagal, teruskan ke handler bawaan
             try {
-                writeCrashReport(filesDir = filesDir, thread = thread, throwable = throwable)
+                previousHandler?.uncaughtException(thread, throwable)
             } catch (_: Throwable) {
-                // Jangan pernah melempar exception dari uncaught exception handler
-            } finally {
-                try {
-                    defaultHandler?.uncaughtException(thread, throwable)
-                } catch (_: Throwable) {
-                    // Abaikan kegagalan handler bawaan
-                }
+                Process.killProcess(Process.myPid())
+                exitProcess(10)
             }
         }
     }
 
     fun hasUnseenCrashReport(context: Context): Boolean {
-        if (!BuildConfig.CRASH_DIAGNOSTICS_ENABLED) return false
         return runCatching {
             val flagFile = File(context.filesDir, UNSEEN_FLAG_NAME)
             val reportFile = File(context.filesDir, REPORT_FILE_NAME)
@@ -93,7 +127,6 @@ object CrashReporter {
     }
 
     fun markCrashReportSeen(context: Context) {
-        if (!BuildConfig.CRASH_DIAGNOSTICS_ENABLED) return
         runCatching {
             val flagFile = File(context.filesDir, UNSEEN_FLAG_NAME)
             if (flagFile.exists()) {
@@ -103,7 +136,6 @@ object CrashReporter {
     }
 
     fun readCrashReport(context: Context): String? {
-        if (!BuildConfig.CRASH_DIAGNOSTICS_ENABLED) return null
         return runCatching {
             val reportFile = File(context.filesDir, REPORT_FILE_NAME)
             if (reportFile.exists()) {
@@ -115,23 +147,27 @@ object CrashReporter {
     }
 
     fun clearCrashReport(context: Context) {
-        if (!BuildConfig.CRASH_DIAGNOSTICS_ENABLED) return
         runCatching {
             File(context.filesDir, REPORT_FILE_NAME).delete()
             File(context.filesDir, UNSEEN_FLAG_NAME).delete()
         }
     }
 
-    private fun writeCrashReport(filesDir: File, thread: Thread, throwable: Throwable) {
-        val stackTrace = StringWriter().also { sw ->
+    internal fun formatThrowableStackTrace(throwable: Throwable): String {
+        return StringWriter().also { sw ->
             PrintWriter(sw).use { pw -> throwable.printStackTrace(pw) }
         }.toString()
+    }
 
-        BreadcrumbLog.recordCrashAndFlushSync(
-            category = "CRASH",
-            message = "${throwable::class.java.simpleName}: ${throwable.message ?: "no message"} on ${thread.name}"
-        )
-
+    internal fun writeCrashReportToDir(
+        filesDir: File,
+        thread: Thread,
+        throwable: Throwable,
+        breadcrumbs: List<String>,
+        appVersion: String = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+        buildType: String = BuildConfig.BUILD_TYPE
+    ): File {
+        val stackTrace = formatThrowableStackTrace(throwable)
         val report = CrashReportFormatter.format(
             timestampMillis = System.currentTimeMillis(),
             androidRelease = Build.VERSION.RELEASE ?: "unknown",
@@ -141,13 +177,30 @@ object CrashReporter {
             device = Build.DEVICE ?: "unknown",
             threadName = thread.name,
             stackTrace = stackTrace,
-            breadcrumbs = BreadcrumbLog.entries()
+            breadcrumbs = breadcrumbs,
+            appVersion = appVersion,
+            buildType = buildType
         )
 
         if (!filesDir.exists()) {
             filesDir.mkdirs()
         }
-        File(filesDir, REPORT_FILE_NAME).writeText(report, Charsets.UTF_8)
+        val reportFile = File(filesDir, REPORT_FILE_NAME)
+        reportFile.writeText(report, Charsets.UTF_8)
         File(filesDir, UNSEEN_FLAG_NAME).writeText("1", Charsets.UTF_8)
+        return reportFile
+    }
+
+    private fun writeCrashReport(filesDir: File, thread: Thread, throwable: Throwable) {
+        BreadcrumbLog.recordCrashAndFlushSync(
+            category = "CRASH",
+            message = "${throwable::class.java.simpleName}: ${throwable.message ?: "no message"} on ${thread.name}"
+        )
+        writeCrashReportToDir(
+            filesDir = filesDir,
+            thread = thread,
+            throwable = throwable,
+            breadcrumbs = BreadcrumbLog.entries()
+        )
     }
 }

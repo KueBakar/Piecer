@@ -45,6 +45,7 @@ import com.piecer.app.BuildConfig
 import com.piecer.app.R
 import com.piecer.app.ui.components.PiecerCard
 import com.piecer.app.ui.components.PiecerCardVariant
+import com.piecer.app.ui.crash.CrashActivity
 import com.piecer.app.ui.theme.PiecerTheme
 import com.piecer.app.util.update.AppLinks
 import kotlinx.coroutines.launch
@@ -178,6 +179,14 @@ fun AboutScreen(
                                 onClick = { openUrl(AppLinks.DONATE_URL) }
                             )
                         }
+                        HorizontalDivider(color = colorScheme.outlineVariant)
+                        AboutLinkRow(
+                            title = stringResource(id = R.string.about_last_crash_title),
+                            subtitle = stringResource(id = R.string.about_last_crash_desc),
+                            onClick = {
+                                context.startActivity(Intent(context, CrashActivity::class.java))
+                            }
+                        )
                     }
                 }
             }

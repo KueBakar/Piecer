@@ -30,6 +30,14 @@
                 android:resource="@xml/shortcuts" />
         </activity>
 
+        <activity
+            android:name=".ui.crash.CrashActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:process=":crash"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

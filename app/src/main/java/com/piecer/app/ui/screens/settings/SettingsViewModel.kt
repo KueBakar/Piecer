@@ -98,7 +98,11 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun checkForUpdatesManually() {
-        updateManager.checkManually()
+        try {
+            updateManager.checkManually()
+        } catch (_: Throwable) {
+            // Kegagalan sudah ditangani di UpdateManager
+        }
     }
 
     fun setBlockScreenshots(enabled: Boolean) {

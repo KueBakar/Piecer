@@ -476,6 +476,14 @@ fun SettingsScreen(
                                 color = colorScheme.onSurfaceVariant
                             )
                         }
+                        val updateError = (updateState.phase as? UpdatePhase.Error)?.message
+                        if (!updateError.isNullOrBlank() && !updateState.showUpdateDialog) {
+                            Text(
+                                text = updateError,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colorScheme.error
+                            )
+                        }
                         OutlinedButton(
                             onClick = viewModel::checkForUpdatesManually,
                             enabled = updateState.isFeatureEnabled && !isChecking,
@@ -533,6 +541,16 @@ fun SettingsScreen(
                                 title = stringResource(id = R.string.settings_replay_splash_title),
                                 subtitle = stringResource(id = R.string.settings_replay_splash_desc),
                                 onClick = onReplaySplash
+                            )
+                            HorizontalDivider(color = colorScheme.outlineVariant)
+                            SettingsActionRow(
+                                title = stringResource(id = R.string.settings_trigger_test_crash_title),
+                                subtitle = stringResource(id = R.string.settings_trigger_test_crash_desc),
+                                onClick = {
+                                    throw IllegalStateException(
+                                        "Uji crash dari Pengaturan > Diagnostik (${Thread.currentThread().name})"
+                                    )
+                                }
                             )
                         }
                     }
