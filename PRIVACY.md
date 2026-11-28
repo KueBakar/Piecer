@@ -27,7 +27,7 @@ Fitur pemeriksaan pembaruan otomatis **mati secara default** sampai Anda menyetu
 
 - `INTERNET`: Hanya digunakan oleh modul pembaruan (`util/update`) untuk memeriksa `update.json` dan mengunduh APK rilis dari GitHub melalui HTTPS.
 - `REQUEST_INSTALL_PACKAGES`: Hanya digunakan untuk memasang APK pembaruan resmi yang telah diverifikasi ukuran, SHA-256, dan tanda tangannya.
-- `POST_NOTIFICATIONS` & `RECEIVE_BOOT_COMPLETED`: Opsional, hanya untuk pengingat harian lokal di perangkat.
+- `POST_NOTIFICATIONS` & `RECEIVE_BOOT_COMPLETED`: Opsional, hanya untuk menjadwalkan ulang pengingat lokal di perangkat.
 
 ## Kontak
 

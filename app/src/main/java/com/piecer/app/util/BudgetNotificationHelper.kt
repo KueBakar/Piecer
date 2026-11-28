@@ -115,32 +115,15 @@ class BudgetNotificationHelper @Inject constructor(
     }
 
     private fun hasNotificationPermission(): Boolean {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val granted = ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
-            if (!granted) return false
-        }
-        return NotificationManagerCompat.from(context).areNotificationsEnabled()
+        return NotificationChannelHelper.canPostNotification(context, CHANNEL_ID)
     }
 
     private fun ensureChannel() {
-        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (manager.getNotificationChannel(CHANNEL_ID) == null) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                context.getString(R.string.budget_notif_channel_name),
-                NotificationManager.IMPORTANCE_DEFAULT
-            ).apply {
-                description = context.getString(R.string.budget_notif_channel_desc)
-            }
-            manager.createNotificationChannel(channel)
-        }
+        NotificationChannelHelper.ensureAllChannels(context)
     }
 
     companion object {
-        private const val CHANNEL_ID = "budget_alerts"
+        private const val CHANNEL_ID = NotificationChannelHelper.CHANNEL_BUDGET_ALERTS
         private const val PREFS_NAME = "piecer_budget_alerts"
     }
 }

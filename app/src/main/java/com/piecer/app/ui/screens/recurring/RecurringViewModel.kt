@@ -14,6 +14,7 @@ import com.piecer.app.data.repository.TransactionRepository
 import com.piecer.app.data.repository.WalletRepository
 import com.piecer.app.util.DateUtils
 import com.piecer.app.util.RecurringCalculator
+import com.piecer.app.util.RecurringReminderScheduler
 import com.piecer.app.util.SubscriptionSuggestion
 import com.piecer.app.util.parseRupiahInput
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -64,7 +65,8 @@ class RecurringViewModel @Inject constructor(
     private val recurringRepository: RecurringRepository,
     transactionRepository: TransactionRepository,
     categoryRepository: CategoryRepository,
-    walletRepository: WalletRepository
+    walletRepository: WalletRepository,
+    private val recurringReminderScheduler: RecurringReminderScheduler
 ) : ViewModel() {
 
     private val formState = MutableStateFlow(RecurringFormState())
@@ -233,6 +235,9 @@ class RecurringViewModel @Inject constructor(
             } else {
                 recurringRepository.insert(entity)
             }
+            if (entity.isActive) {
+                recurringReminderScheduler.scheduleNext()
+            }
             formState.value = RecurringFormState(isVisible = false)
         }
     }
@@ -240,6 +245,9 @@ class RecurringViewModel @Inject constructor(
     fun toggleActive(item: RecurringEntity, active: Boolean) {
         viewModelScope.launch {
             recurringRepository.update(item.copy(isActive = active))
+            if (active) {
+                recurringReminderScheduler.scheduleNext()
+            }
         }
     }
 
@@ -269,6 +277,7 @@ class RecurringViewModel @Inject constructor(
                     createdAt = now
                 )
             )
+            recurringReminderScheduler.scheduleNext()
         }
     }
 

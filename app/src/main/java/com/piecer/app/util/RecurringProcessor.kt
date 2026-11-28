@@ -1,16 +1,10 @@
 package com.piecer.app.util
 
-import android.Manifest
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat
 import androidx.room.withTransaction
 import com.piecer.app.MainActivity
 import com.piecer.app.R
@@ -108,33 +102,15 @@ class RecurringProcessor @Inject constructor(
         daysUntil: Int,
         notifKey: String
     ) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val granted = ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
-            if (!granted) return
-        }
-        if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return
-
-        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (manager.getNotificationChannel(CHANNEL_ID) == null) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                context.getString(R.string.recurring_notif_channel_name),
-                NotificationManager.IMPORTANCE_DEFAULT
-            ).apply {
-                description = context.getString(R.string.recurring_notif_channel_desc)
-            }
-            manager.createNotificationChannel(channel)
-        }
+        NotificationChannelHelper.ensureAllChannels(context)
+        if (!NotificationChannelHelper.canPostNotification(context, CHANNEL_ID)) return
 
         val launchIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
         val contentIntent = PendingIntent.getActivity(
             context,
-            recurringId.toInt(),
+            (CONTENT_REQUEST_CODE_BASE + recurringId).toInt(),
             launchIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -165,7 +141,8 @@ class RecurringProcessor @Inject constructor(
     }
 
     companion object {
-        private const val CHANNEL_ID = "recurring_reminders"
+        private const val CHANNEL_ID = NotificationChannelHelper.CHANNEL_RECURRING_REMINDERS
         private const val PREFS_NAME = "piecer_recurring_alerts"
+        private const val CONTENT_REQUEST_CODE_BASE = 15000L
     }
 }

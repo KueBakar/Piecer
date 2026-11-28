@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.piecer.app.data.preferences.AppSettings
 import com.piecer.app.data.preferences.SettingsRepository
+import com.piecer.app.util.AlarmRescheduler
 import com.piecer.app.util.AppLockPolicy
 import com.piecer.app.util.BreadcrumbLog
 import com.piecer.app.util.PinHasher
@@ -27,6 +28,7 @@ import javax.inject.Inject
 class MainViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val recurringProcessor: Lazy<RecurringProcessor>,
+    private val alarmRescheduler: Lazy<AlarmRescheduler>,
     private val updateManager: UpdateManager
 ) : ViewModel() {
 
@@ -67,6 +69,7 @@ class MainViewModel @Inject constructor(
             }
             _isAppReady.value = true
             runCatching { recurringProcessor.get().processDueAndNotify() }
+            runCatching { alarmRescheduler.get().rescheduleAll() }
             try {
                 updateManager.checkInBackgroundIfDue()
             } catch (t: Throwable) {

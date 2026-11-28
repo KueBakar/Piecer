@@ -70,6 +70,8 @@ import com.piecer.app.ui.screens.recurring.RecurringViewModel
 import com.piecer.app.ui.screens.security.LockScreen
 import com.piecer.app.ui.screens.settings.AboutScreen
 import com.piecer.app.ui.screens.settings.CrashReportScreen
+import com.piecer.app.ui.screens.settings.ReminderStatusScreen
+import com.piecer.app.ui.screens.settings.ReminderStatusViewModel
 import com.piecer.app.ui.screens.settings.SettingsScreen
 import com.piecer.app.ui.screens.settings.SettingsViewModel
 import com.piecer.app.ui.components.UpdateAvailableDialog
@@ -111,6 +113,7 @@ class MainActivity : FragmentActivity() {
     private val splitBillViewModel: SplitBillViewModel by viewModels()
     private val netWorthViewModel: NetWorthViewModel by viewModels()
     private val settingsViewModel: SettingsViewModel by viewModels()
+    private val reminderStatusViewModel: ReminderStatusViewModel by viewModels()
     private val pendingStartRouteState = mutableStateOf<String?>(null)
     private val pendingQuickTypeState = mutableStateOf<TransactionType?>(null)
     private val pendingFocusQuickEntryState = mutableStateOf(false)
@@ -240,6 +243,7 @@ class MainActivity : FragmentActivity() {
                                 splitBillViewModel = splitBillViewModel,
                                 netWorthViewModel = netWorthViewModel,
                                 settingsViewModel = settingsViewModel,
+                                reminderStatusViewModel = reminderStatusViewModel,
                                 wrappedViewModel = wrappedViewModel,
                                 pendingStartRoute = if (isLocked && settings.isPinEnabled) null else pendingStartRouteState.value,
                                 pendingQuickType = pendingQuickTypeState.value,
@@ -487,6 +491,7 @@ fun PiecerApp(
     splitBillViewModel: SplitBillViewModel,
     netWorthViewModel: NetWorthViewModel,
     settingsViewModel: SettingsViewModel,
+    reminderStatusViewModel: ReminderStatusViewModel,
     wrappedViewModel: WrappedViewModel,
     pendingStartRoute: String? = null,
     pendingQuickType: TransactionType? = null,
@@ -537,6 +542,7 @@ fun PiecerApp(
         currentRoute == PiecerRoutes.SPLIT_BILL ||
         currentRoute == PiecerRoutes.NET_WORTH ||
         currentRoute == PiecerRoutes.SETTINGS ||
+        currentRoute == PiecerRoutes.REMINDER_STATUS ||
         currentRoute == PiecerRoutes.ABOUT ||
         currentRoute == PiecerRoutes.CRASH_REPORT ||
         currentRoute == PiecerRoutes.WRAPPED
@@ -738,6 +744,11 @@ fun PiecerApp(
                     viewModel = settingsViewModel,
                     onBack = { navController.popBackStack() },
                     onPinConfigured = onPinConfigured,
+                    onOpenReminderStatus = {
+                        navController.navigate(PiecerRoutes.REMINDER_STATUS) {
+                            launchSingleTop = true
+                        }
+                    },
                     onOpenAbout = {
                         navController.navigate(PiecerRoutes.ABOUT) {
                             launchSingleTop = true
@@ -755,6 +766,12 @@ fun PiecerApp(
                             onReplaySplash()
                         }
                     }
+                )
+            }
+            composable(PiecerRoutes.REMINDER_STATUS) {
+                ReminderStatusScreen(
+                    viewModel = reminderStatusViewModel,
+                    onBack = { navController.popBackStack() }
                 )
             }
             composable(PiecerRoutes.ABOUT) {

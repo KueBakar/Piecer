@@ -57,6 +57,7 @@ object PiecerRoutes {
     const val SPLIT_BILL = "split_bill"
     const val NET_WORTH = "net_worth"
     const val SETTINGS = "settings"
+    const val REMINDER_STATUS = "reminder_status"
     const val ABOUT = "about"
     const val CRASH_REPORT = "crash_report"
     const val WRAPPED = "wrapped"

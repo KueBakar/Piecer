@@ -83,6 +83,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     onPinConfigured: () -> Unit = {},
+    onOpenReminderStatus: () -> Unit = {},
     onOpenAbout: () -> Unit = {},
     onOpenCrashReport: () -> Unit = {},
     onReplaySplash: () -> Unit = {}
@@ -340,6 +341,14 @@ fun SettingsScreen(
                                 )
                             }
                         }
+
+                        HorizontalDivider(color = colorScheme.outlineVariant)
+
+                        SettingsActionRow(
+                            title = stringResource(id = R.string.settings_reminder_status_title),
+                            subtitle = stringResource(id = R.string.settings_reminder_status_desc),
+                            onClick = onOpenReminderStatus
+                        )
                     }
                 }
             }

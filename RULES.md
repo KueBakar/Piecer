@@ -16,6 +16,7 @@ App pencatat keuangan Android native, 100% gratis, offline-first, tanpa iklan, t
 - Teks UI di strings.xml (Bahasa Indonesia)
 - Satu tugas = satu fitur kecil, jangan ubah file di luar scope
 - INTERNET dan REQUEST_INSTALL_PACKAGES hanya dipakai modul util/update. Tidak ada analitik, iklan, pelacak, atau koneksi lain.
+- RECEIVE_BOOT_COMPLETED dipakai hanya untuk menjadwalkan ulang pengingat lokal di perangkat.
 - Setelah selesai, pastikan build sukses
 
 ## Desain

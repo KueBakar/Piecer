@@ -12,11 +12,11 @@ import com.piecer.app.data.local.entity.TransactionType
 import com.piecer.app.ui.navigation.PiecerRoutes
 import com.piecer.app.util.DateUtils
 import com.piecer.app.util.FinancialCycleHelper
+import com.piecer.app.util.ReminderScheduleCalculator
 import com.piecer.app.util.calculateBolehJajanHariIni
 import com.piecer.app.util.calculateWalletBalance
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.flow.first
-import java.util.Calendar
 
 data class WidgetTransactionItem(
     val title: String,
@@ -62,13 +62,9 @@ object PiecerWidgetUpdater {
         runCatching {
             val appContext = context.applicationContext
             val alarmManager = appContext.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
-            val nextMidnight = Calendar.getInstance().apply {
-                add(Calendar.DAY_OF_YEAR, 1)
-                set(Calendar.HOUR_OF_DAY, 0)
-                set(Calendar.MINUTE, 0)
-                set(Calendar.SECOND, 5)
-                set(Calendar.MILLISECOND, 0)
-            }.timeInMillis
+            val nextMidnight = ReminderScheduleCalculator.nextMidnightWidgetTriggerMillis(
+                nowMillis = System.currentTimeMillis()
+            )
 
             val intent = Intent(appContext, PiecerWidgetMidnightReceiver::class.java)
             val pendingIntent = PendingIntent.getBroadcast(
@@ -77,7 +73,7 @@ object PiecerWidgetUpdater {
                 intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
-            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC, nextMidnight, pendingIntent)
+            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextMidnight, pendingIntent)
         }
     }
 

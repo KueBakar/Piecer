@@ -42,7 +42,8 @@ data class AppSettings(
     val updateConsentShown: Boolean = false,
     val updateWifiOnly: Boolean = false,
     val lastUpdateCheckMillis: Long = 0L,
-    val lastUpdateCheckStatus: String = ""
+    val lastUpdateCheckStatus: String = "",
+    val lastReminderFiredAtMillis: Long = 0L
 ) {
     val isPinEnabled: Boolean get() = !pinHash.isNullOrBlank() && !pinSalt.isNullOrBlank()
 }
@@ -76,6 +77,7 @@ class SettingsRepository @Inject constructor(
         val UPDATE_WIFI_ONLY = booleanPreferencesKey("update_wifi_only")
         val LAST_UPDATE_CHECK_MILLIS = longPreferencesKey("last_update_check_millis")
         val LAST_UPDATE_CHECK_STATUS = stringPreferencesKey("last_update_check_status")
+        val LAST_REMINDER_FIRED_AT_MILLIS = longPreferencesKey("last_reminder_fired_at_millis")
     }
 
     val settingsFlow: Flow<AppSettings> = context.settingsDataStore.data.map { prefs ->
@@ -101,7 +103,8 @@ class SettingsRepository @Inject constructor(
             updateConsentShown = prefs[Keys.UPDATE_CONSENT_SHOWN] ?: false,
             updateWifiOnly = prefs[Keys.UPDATE_WIFI_ONLY] ?: false,
             lastUpdateCheckMillis = prefs[Keys.LAST_UPDATE_CHECK_MILLIS] ?: 0L,
-            lastUpdateCheckStatus = prefs[Keys.LAST_UPDATE_CHECK_STATUS] ?: ""
+            lastUpdateCheckStatus = prefs[Keys.LAST_UPDATE_CHECK_STATUS] ?: "",
+            lastReminderFiredAtMillis = prefs[Keys.LAST_REMINDER_FIRED_AT_MILLIS] ?: 0L
         )
     }
 
@@ -185,6 +188,12 @@ class SettingsRepository @Inject constructor(
         context.settingsDataStore.edit {
             it[Keys.LAST_UPDATE_CHECK_MILLIS] = timestampMillis
             it[Keys.LAST_UPDATE_CHECK_STATUS] = status
+        }
+    }
+
+    suspend fun setLastReminderFiredAt(timestampMillis: Long) {
+        context.settingsDataStore.edit {
+            it[Keys.LAST_REMINDER_FIRED_AT_MILLIS] = timestampMillis
         }
     }
 

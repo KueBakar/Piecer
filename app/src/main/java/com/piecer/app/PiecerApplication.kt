@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Bundle
 import com.piecer.app.util.BreadcrumbLog
 import com.piecer.app.util.CrashReporter
+import com.piecer.app.util.NotificationChannelHelper
 import dagger.hilt.android.HiltAndroidApp
 import java.io.File
 
@@ -28,6 +29,7 @@ class PiecerApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         if (!isCrashProcess()) {
+            NotificationChannelHelper.ensureAllChannels(this)
             registerActivityLifecycleCallbacks(DebugLifecycleLogger())
         }
     }
