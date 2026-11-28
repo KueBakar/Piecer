@@ -1,10 +1,55 @@
 ﻿param(
-    [string]$ReleaseNotes = "Perbaikan dan peningkatan stabilitas.",
+    [string]$ReleaseNotes = "",
     [string]$GithubUser = "KueBakar",
     [string]$GithubRepo = "Piecer"
 )
 
 $ErrorActionPreference = "Stop"
+
+function Get-ChangelogReleaseNotes {
+    param(
+        [string]$ChangelogPath,
+        [string]$VersionName
+    )
+    if (-not (Test-Path $ChangelogPath -PathType Leaf)) {
+        return $null
+    }
+    $lines = Get-Content -Path $ChangelogPath -Encoding UTF8
+    $targetHeaderPattern = '^\s*##\s+\[' + [regex]::Escape($VersionName) + '\]'
+    $anyHeaderPattern = '^\s*##\s+\['
+
+    $startIdx = -1
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        if ($lines[$i] -match $targetHeaderPattern) {
+            $startIdx = $i + 1
+            break
+        }
+    }
+    if ($startIdx -lt 0) {
+        for ($i = 0; $i -lt $lines.Count; $i++) {
+            if ($lines[$i] -match $anyHeaderPattern) {
+                $startIdx = $i + 1
+                break
+            }
+        }
+    }
+    if ($startIdx -lt 0) {
+        return $null
+    }
+
+    $sectionLines = @()
+    for ($i = $startIdx; $i -lt $lines.Count; $i++) {
+        if ($lines[$i] -match $anyHeaderPattern) {
+            break
+        }
+        $sectionLines += $lines[$i]
+    }
+    $text = ($sectionLines -join "`n").Trim()
+    if ([string]::IsNullOrWhiteSpace($text)) {
+        return $null
+    }
+    return $text
+}
 
 Write-Host "==> Menjalankan unit test..."
 & .\gradlew testDebugUnitTest
@@ -56,6 +101,14 @@ Copy-Item -Path $releaseApk -Destination $distApkPath -Force
 
 $sha256 = (Get-FileHash -Path $distApkPath -Algorithm SHA256).Hash.ToLowerInvariant()
 $sizeBytes = (Get-Item $distApkPath).Length
+
+if ([string]::IsNullOrWhiteSpace($ReleaseNotes)) {
+    $changelogPath = Join-Path $PSScriptRoot "CHANGELOG.md"
+    $ReleaseNotes = Get-ChangelogReleaseNotes -ChangelogPath $changelogPath -VersionName $versionName
+    if ([string]::IsNullOrWhiteSpace($ReleaseNotes)) {
+        $ReleaseNotes = "Perbaikan dan peningkatan stabilitas."
+    }
+}
 
 $apkUrl = "https://github.com/$GithubUser/$GithubRepo/releases/download/v$versionName/$distApkName"
 $updateObj = [ordered]@{

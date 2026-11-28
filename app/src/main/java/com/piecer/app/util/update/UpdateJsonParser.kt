@@ -87,7 +87,7 @@ object UpdateJsonParser {
         if (metadata.versionCode <= 0 || metadata.versionName.isBlank()) {
             return UpdateCheckResult.Error("Informasi versi pembaruan tidak valid.")
         }
-        if (!UpdateUrlValidator.isAllowedUrl(metadata.apkUrl)) {
+        if (!UpdateUrlValidator.isAllowedUrl(metadata.apkUrl, allowGithubIo = false)) {
             return UpdateCheckResult.Error("URL APK tidak berasal dari sumber tepercaya.")
         }
         if (!sha256Regex.matches(metadata.sha256)) {

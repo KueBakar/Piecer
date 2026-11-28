@@ -2,8 +2,8 @@
     "versionCode":  2,
     "versionName":  "1.0.1",
     "apkUrl":  "https://github.com/KueBakar/Piecer/releases/download/v1.0.1/PIECER-v1.0.1.apk",
-    "sha256":  "a9e97aadfaec5d0982471d911b3e93edf985e3834a17de33d057131ee37acb81",
+    "sha256":  "0cefdac1a7da893b9a45e31233f70d734f33050e66e065d8a549d22644759463",
     "sizeBytes":  3463608,
     "minSdk":  26,
-    "releaseNotes":  "Perbaikan dan peningkatan stabilitas."
+    "releaseNotes":  "### Ditambahkan\n- Pencatatan transaksi (pemasukan, pengeluaran, transfer) dan dompet ganda.\n- Anggaran, target tabungan, Pieces, utang/piutang, dan split bill.\n- Transaksi berulang, pengingat harian lokal, widget layar utama, dan kunci PIN/biometrik.\n- Backup/restore JSON lokal dan ekspor CSV.\n- Layar **Tentang PIECER** dan modul pembaruan aplikasi mandiri via GitHub dengan verifikasi SHA-256 dan tanda tangan APK.\n- Layar Tentang baru dengan profil developer dan latar animasi\n- Perbaikan pengingat: sekarang muncul meski app ditutup\n- Perbaikan unduhan pembaruan"
 }

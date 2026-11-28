@@ -71,7 +71,8 @@ class ApkDownloader @Inject constructor(
         metadata: UpdateMetadata,
         wifiOnly: Boolean
     ): Flow<DownloadProgress> = flow {
-        if (!UpdateUrlValidator.isAllowedUrl(metadata.apkUrl)) {
+        if (!UpdateUrlValidator.isAllowedUrl(metadata.apkUrl, allowGithubIo = false)) {
+            recordRejectedHostBreadcrumb("apk_url", UpdateUrlValidator.extractHost(metadata.apkUrl))
             emit(DownloadProgress.Failed("URL unduhan APK tidak diizinkan."))
             return@flow
         }
@@ -154,11 +155,13 @@ class ApkDownloader @Inject constructor(
     private fun openAllowlistedConnection(initialUrl: String): HttpsURLConnection {
         var currentUrl = initialUrl
         repeat(MAX_REDIRECTS + 1) {
-            if (!UpdateUrlValidator.isAllowedUrl(currentUrl)) {
-                throw IOException("Pengalihan URL keluar dari domain tepercaya ditolak.")
+            if (!UpdateUrlValidator.isAllowedUrl(currentUrl, allowGithubIo = false)) {
+                recordRejectedHostBreadcrumb("apk_request", UpdateUrlValidator.extractHost(currentUrl))
+                throw IOException("Pengalihan keluar dari domain tepercaya ditolak.")
             }
             val conn = (URL(currentUrl).openConnection() as? HttpsURLConnection)
                 ?: throw IOException("Koneksi harus menggunakan HTTPS.")
+            // Ikuti redirect secara manual dan jangan teruskan Authorization/Cookie antar hop
             conn.instanceFollowRedirects = false
             conn.connectTimeout = CONNECT_TIMEOUT_MS
             conn.readTimeout = READ_TIMEOUT_MS
@@ -169,15 +172,19 @@ class ApkDownloader @Inject constructor(
             if (code in 300..399) {
                 val location = conn.getHeaderField("Location")
                 conn.disconnect()
-                if (location.isNullOrBlank()) {
-                    throw IOException("Respons pengalihan tidak memiliki URL tujuan.")
+                when (val validation = UpdateUrlValidator.resolveAndValidateRedirect(currentUrl, location, allowGithubIo = false)) {
+                    is UpdateUrlValidator.RedirectValidation.Allowed -> {
+                        currentUrl = validation.resolvedUrl
+                        return@repeat
+                    }
+                    is UpdateUrlValidator.RedirectValidation.Rejected -> {
+                        recordRejectedHostBreadcrumb("apk_redirect", validation.rejectedHost)
+                        throw IOException("Pengalihan keluar dari domain tepercaya ditolak.")
+                    }
+                    UpdateUrlValidator.RedirectValidation.InvalidLocation -> {
+                        throw IOException("Respons pengalihan tidak memiliki URL tujuan.")
+                    }
                 }
-                val resolved = URL(URL(currentUrl), location).toString()
-                if (!UpdateUrlValidator.isAllowedUrl(resolved)) {
-                    throw IOException("Pengalihan keluar dari domain tepercaya ditolak.")
-                }
-                currentUrl = resolved
-                return@repeat
             }
 
             if (code != HttpURLConnection.HTTP_OK) {
@@ -187,5 +194,15 @@ class ApkDownloader @Inject constructor(
             return conn
         }
         throw IOException("Terlalu banyak pengalihan URL.")
+    }
+
+    private fun recordRejectedHostBreadcrumb(stage: String, host: String?) {
+        if (BuildConfig.CRASH_DIAGNOSTICS_ENABLED) {
+            BreadcrumbLog.record(
+                "UPDATE",
+                "URL ditolak ($stage) untuk host: ${host ?: "tidak diketahui"}",
+                syncWrite = true
+            )
+        }
     }
 }

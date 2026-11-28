@@ -32,7 +32,8 @@ class UpdateChecker @Inject constructor() {
         if (!isUpdateEnabled) {
             return@withContext UpdateCheckResult.Error("Pemeriksaan pembaruan tidak aktif pada build ini.")
         }
-        if (!UpdateUrlValidator.isAllowedUrl(updateJsonUrl)) {
+        if (!UpdateUrlValidator.isAllowedUrl(updateJsonUrl, allowGithubIo = true)) {
+            recordRejectedHostBreadcrumb("update_json", UpdateUrlValidator.extractHost(updateJsonUrl))
             return@withContext UpdateCheckResult.Error("URL pembaruan tidak valid atau belum dikonfigurasi.")
         }
 
@@ -67,12 +68,14 @@ class UpdateChecker @Inject constructor() {
     private fun fetchJsonWithAllowlistedRedirects(initialUrl: String): String {
         var currentUrl = initialUrl
         repeat(MAX_REDIRECTS + 1) {
-            if (!UpdateUrlValidator.isAllowedUrl(currentUrl)) {
+            if (!UpdateUrlValidator.isAllowedUrl(currentUrl, allowGithubIo = true)) {
+                recordRejectedHostBreadcrumb("update_json_request", UpdateUrlValidator.extractHost(currentUrl))
                 throw RedirectNotAllowedException("URL tidak termasuk dalam daftar host yang diizinkan.")
             }
             val connection = (URL(currentUrl).openConnection() as? HttpsURLConnection)
                 ?: throw IOException("Koneksi harus menggunakan HTTPS.")
             try {
+                // Ikuti redirect secara manual dan jangan teruskan Authorization/Cookie antar hop
                 connection.instanceFollowRedirects = false
                 connection.connectTimeout = CONNECT_TIMEOUT_MS
                 connection.readTimeout = READ_TIMEOUT_MS
@@ -83,13 +86,19 @@ class UpdateChecker @Inject constructor() {
                 val code = connection.responseCode
                 if (code in 300..399) {
                     val location = connection.getHeaderField("Location")
-                        ?: throw IOException("Respons pengalihan tidak memiliki tujuan.")
-                    val resolved = URL(URL(currentUrl), location).toString()
-                    if (!UpdateUrlValidator.isAllowedUrl(resolved)) {
-                        throw RedirectNotAllowedException("Pengalihan keluar dari domain tepercaya ditolak.")
+                    when (val validation = UpdateUrlValidator.resolveAndValidateRedirect(currentUrl, location, allowGithubIo = true)) {
+                        is UpdateUrlValidator.RedirectValidation.Allowed -> {
+                            currentUrl = validation.resolvedUrl
+                            return@repeat
+                        }
+                        is UpdateUrlValidator.RedirectValidation.Rejected -> {
+                            recordRejectedHostBreadcrumb("update_json_redirect", validation.rejectedHost)
+                            throw RedirectNotAllowedException("Pengalihan keluar dari domain tepercaya ditolak.")
+                        }
+                        UpdateUrlValidator.RedirectValidation.InvalidLocation -> {
+                            throw IOException("Respons pengalihan tidak memiliki tujuan.")
+                        }
                     }
-                    currentUrl = resolved
-                    return@repeat
                 }
 
                 if (code != HttpURLConnection.HTTP_OK) {
@@ -121,6 +130,16 @@ class UpdateChecker @Inject constructor() {
             }
         }
         throw IOException("Terlalu banyak pengalihan URL.")
+    }
+
+    private fun recordRejectedHostBreadcrumb(stage: String, host: String?) {
+        if (BuildConfig.CRASH_DIAGNOSTICS_ENABLED) {
+            BreadcrumbLog.record(
+                "UPDATE",
+                "URL ditolak ($stage) untuk host: ${host ?: "tidak diketahui"}",
+                syncWrite = true
+            )
+        }
     }
 
     private class RedirectNotAllowedException(message: String) : IOException(message)

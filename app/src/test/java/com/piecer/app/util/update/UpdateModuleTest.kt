@@ -97,17 +97,66 @@ class UpdateModuleTest {
     }
 
     @Test
-    fun `allowlist accepts github and github io HTTPS URLs and rejects others`() {
+    fun `allowlist accepts github and githubusercontent HTTPS URLs and rejects others`() {
         assertTrue(UpdateUrlValidator.isAllowedUrl("https://github.com/user/repo/releases/download/v1/app.apk"))
+        assertTrue(UpdateUrlValidator.isAllowedUrl("https://release-assets.githubusercontent.com/github-production-release-asset/123/app.apk"))
         assertTrue(UpdateUrlValidator.isAllowedUrl("https://objects.githubusercontent.com/some/path"))
+        assertTrue(UpdateUrlValidator.isAllowedUrl("https://raw.githubusercontent.com/user/repo/main/file"))
         assertTrue(UpdateUrlValidator.isAllowedUrl("https://githubusercontent.com/some/path"))
         assertTrue(UpdateUrlValidator.isAllowedUrl("https://myuser.github.io/piecer/update.json"))
+        assertTrue(UpdateUrlValidator.isAllowedUrl("https://github.com:443/user/repo/releases/download/v1/app.apk"))
 
+        // URL panjang (~1000 karakter) dengan parameter bertanda tangan sementara harus diizinkan
+        val longSignedQuery = "sig=" + "a".repeat(950)
+        assertTrue(
+            UpdateUrlValidator.isAllowedUrl(
+                "https://release-assets.githubusercontent.com/asset/app.apk?$longSignedQuery",
+                allowGithubIo = false
+            )
+        )
+
+        // github.io hanya untuk update.json, bukan unduhan APK
+        assertFalse(UpdateUrlValidator.isAllowedUrl("https://myuser.github.io/piecer/app.apk", allowGithubIo = false))
+
+        // Skema HTTP, host mirip/palsu, userinfo, port aneh, dan IP literal harus ditolak
         assertFalse(UpdateUrlValidator.isAllowedUrl("http://github.com/user/repo"))
+        assertFalse(UpdateUrlValidator.isAllowedUrl("http://objects.githubusercontent.com/some/path"))
         assertFalse(UpdateUrlValidator.isAllowedUrl("https://evil.com/app.apk"))
         assertFalse(UpdateUrlValidator.isAllowedUrl("https://github.com.evil.com/app.apk"))
+        assertFalse(UpdateUrlValidator.isAllowedUrl("https://evilgithubusercontent.com/app.apk"))
+        assertFalse(UpdateUrlValidator.isAllowedUrl("https://sub.github.com/app.apk"))
         assertFalse(UpdateUrlValidator.isAllowedUrl("https://github.io/update.json"))
         assertFalse(UpdateUrlValidator.isAllowedUrl("https://user@github.com/repo"))
+        assertFalse(UpdateUrlValidator.isAllowedUrl("https://user:pass@github.com/repo"))
+        assertFalse(UpdateUrlValidator.isAllowedUrl("https://@github.com/repo"))
+        assertFalse(UpdateUrlValidator.isAllowedUrl("https://github.com:8443/user/repo"))
+        assertFalse(UpdateUrlValidator.isAllowedUrl("https://objects.githubusercontent.com:8080/path"))
+        assertFalse(UpdateUrlValidator.isAllowedUrl("https://127.0.0.1/app.apk"))
+        assertFalse(UpdateUrlValidator.isAllowedUrl("https://192.168.1.10/app.apk"))
+        assertFalse(UpdateUrlValidator.isAllowedUrl("https://[::1]/app.apk"))
+    }
+
+    @Test
+    fun `redirect validation allows trusted githubusercontent hop and rejects foreign or http downgrade`() {
+        val initial = "https://github.com/KueBakar/Piecer/releases/download/v1.0.1/PIECER-v1.0.1.apk"
+        val signedTarget = "https://release-assets.githubusercontent.com/github-production-release-asset/1/PIECER-v1.0.1.apk?token=" + "x".repeat(900)
+
+        val allowed = UpdateUrlValidator.resolveAndValidateRedirect(initial, signedTarget, allowGithubIo = false)
+        assertEquals(UpdateUrlValidator.RedirectValidation.Allowed(signedTarget), allowed)
+
+        val foreignRedirect = UpdateUrlValidator.resolveAndValidateRedirect(
+            initial,
+            "https://cdn.evil.com/malware.apk?secret=123",
+            allowGithubIo = false
+        )
+        assertEquals(UpdateUrlValidator.RedirectValidation.Rejected("cdn.evil.com"), foreignRedirect)
+
+        val downgradeRedirect = UpdateUrlValidator.resolveAndValidateRedirect(
+            initial,
+            "http://objects.githubusercontent.com/some/path",
+            allowGithubIo = false
+        )
+        assertEquals(UpdateUrlValidator.RedirectValidation.Rejected("objects.githubusercontent.com"), downgradeRedirect)
     }
 
     @Test

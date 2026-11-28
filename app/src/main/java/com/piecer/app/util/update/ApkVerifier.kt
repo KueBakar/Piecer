@@ -14,6 +14,13 @@ import java.security.MessageDigest
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Evaluasi kelayakan pemasangan APK pembaruan.
+ *
+ * Catatan keamanan: verifikasi hash SHA-256 (plus ukuran berkas) dan kecocokan sertifikat
+ * tanda tangan APK terhadap aplikasi terpasang merupakan pengaman utama yang menjamin
+ * integritas dan keaslian APK, terlepas dari host pengunduhan atau pengalihan CDN.
+ */
 object InstallEligibility {
 
     fun evaluate(
